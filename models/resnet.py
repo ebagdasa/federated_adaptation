@@ -8,6 +8,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from models.simple import SimpleNet
+
 
 class BasicBlock(nn.Module):
     expansion = 1
@@ -62,8 +64,9 @@ class Bottleneck(nn.Module):
         return out
 
 
-class ResNet(nn.Module):
-    def __init__(self, block, num_blocks, num_classes=10):
+class ResNet(SimpleNet):
+    def __init__(self, block, num_blocks, num_classes=10,  name=None, created_time=None):
+        super(ResNet, self).__init__(name, created_time)
         super(ResNet, self).__init__()
         self.in_planes = 64
 
@@ -92,11 +95,11 @@ class ResNet(nn.Module):
         out = F.avg_pool2d(out, 4)
         out_latent = out.view(out.size(0), -1)
         out = self.linear(out_latent)
-        return out, out_latent
+        return out
 
 
-def ResNet18(num_classes=10):
-    return ResNet(BasicBlock, [2,2,2,2], num_classes=num_classes)
+def ResNet18(name=None, created_time=None):
+    return ResNet(BasicBlock, [2,2,2,2], name='{0}_ResNet_18'.format(name), created_time=created_time)
 
 def ResNet34(num_classes=10):
     return ResNet(BasicBlock, [3,4,6,3], num_classes=num_classes)

@@ -34,6 +34,7 @@ class Helper:
         self.best_loss = math.inf
         self.folder_path = f'saved_models/model_{self.name}_{current_time}'
 
+        # TRAINING PARAMS
         self.lr = self.params.get('lr', None)
         self.decay = self.params.get('decay', None)
         self.momentum = self.params.get('momentum', None)
@@ -45,23 +46,23 @@ class Helper:
         self.scheduler = self.params.get('scheduler', False)
         self.resumed_model = self.params.get('resumed_model', False)
 
-        self.poisoning_proportion = self.params.get('poisoning_proportion', False)
-        self.backdoor = self.params.get('backdoor', False)
-        self.poison_number = self.params.get('poison_number', 8)
+        # LOGGING
         self.log = self.params.get('log', True)
         self.tb = self.params.get('tb', True)
         self.random = self.params.get('random', True)
-        self.alpha = self.params.get('alpha', 1)
+        self.report_train_loss = self.params.get('report_train_loss', True)
 
-        self.data = self.params.get('data', 'cifar')
-        self.scale_threshold = self.params.get('scale_threshold', 1)
-        self.normalize = self.params.get('normalize', 'none')
 
-        self.losses = self.params.get('losses', 'normal')
-
+        self.data_type = self.params.get('data_type', 'image')
         self.start_epoch = 1
-        self.fixed_model = None
-        self.ALL_TASKS =  ['backdoor', 'normal', 'latent_fixed', 'latent']
+
+        ### FEDERATED LEARNING PARAMS
+        self.sampling_dirichlet = self.params.get('sampling_dirichlet', False)
+        self.number_of_total_participants = self.params.get('number_of_total_participants', None)
+        self.no_models = self.params.get('no_models', None)
+        self.retrain_no_times = self.params.get('retrain_no_times', 1)
+        self.eta = self.params.get('eta', 1)
+        self.diff_privacy = self.params.get('diff_privacy', False)
 
         if self.log:
             try:
@@ -77,9 +78,9 @@ class Helper:
         self.params['current_time'] = self.current_time
         self.params['folder_path'] = self.folder_path
 
-    def save_model(self, model=None, epoch=0, val_loss=0):
-
-        if self.params['save_model'] and self.log:
+    def save_model(self, epoch=0, val_loss=0):
+        model = self.target_model
+        if self.is_save and self.log:
             # save_model
             logger.info("saving model")
             model_name = '{0}/model_last.pt.tar'.format(self.params['folder_path'])
@@ -94,7 +95,7 @@ class Helper:
                 self.best_loss = val_loss
 
     def save_checkpoint(self, state, is_best, filename='checkpoint.pth.tar'):
-        if not self.params['save_model']:
+        if not self.is_save:
             return False
         torch.save(state, filename)
 
@@ -259,9 +260,9 @@ class Helper:
                 continue
 
             update_per_layer = weight_accumulator[name] * \
-                               (self.params["eta"] / self.params["number_of_total_participants"])
+                               (self.eta / self.number_of_total_participants)
 
-            if self.params['diff_privacy']:
+            if self.diff_privacy:
                 update_per_layer.add_(self.dp_noise(data, self.params['sigma']))
 
             data.add_(update_per_layer)

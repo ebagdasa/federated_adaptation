@@ -30,7 +30,7 @@ class ImageHelper(Helper):
         target_model = ResNet18(name='Target',
                                 created_time=self.params['current_time'])
         target_model.cuda()
-        if self.params['resumed_model']:
+        if self.resumed_model:
             loaded_params = torch.load(f"saved_models/{self.params['resumed_model']}")
             target_model.load_state_dict(loaded_params['state_dict'])
             self.start_epoch = loaded_params['epoch']
@@ -64,7 +64,7 @@ class ImageHelper(Helper):
 
         self.test_dataset = datasets.CIFAR10('./data', train=False, transform=transform_test)
 
-        if self.params['sampling_dirichlet']:
+        if self.sampling_dirichlet:
             ## sample indices for participants using Dirichlet distribution
             indices_per_participant = self.sample_dirichlet_train_data(
                 self.params['number_of_total_participants'],
