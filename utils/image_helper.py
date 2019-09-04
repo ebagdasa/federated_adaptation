@@ -127,8 +127,8 @@ class ImageHelper(Helper):
 
     def get_batch(self, train_data, bptt, evaluation=False):
         data, target = bptt
-        data = data.cuda()
-        target = target.cuda()
+        data = data.to(self.device)
+        target = target.to(self.device)
         if evaluation:
             data.requires_grad_(False)
             target.requires_grad_(False)

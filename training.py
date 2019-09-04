@@ -152,55 +152,56 @@ def test(helper, epoch, data_source,
         dataset_size = len(data_source.dataset)
         data_iterator = data_source
 
-    for batch_id, batch in enumerate(data_iterator):
-        data, targets = helper.get_batch(data_source, batch, evaluation=True)
+    with torch.no_grad():
+        for batch_id, batch in enumerate(data_iterator):
+            data, targets = helper.get_batch(data_source, batch, evaluation=True)
+            if helper.data_type == 'text':
+                output, hidden = model(data, hidden)
+                output_flat = output.view(-1, helper.n_tokens)
+                total_loss += len(data) * criterion(output_flat, targets).data
+                hidden = helper.repackage_hidden(hidden)
+                pred = output_flat.data.max(1)[1]
+                correct += pred.eq(targets.data).sum().to(dtype=torch.float)
+                total_test_words += targets.data.shape[0]
+
+                if batch_id == random_print_output_batch * helper.params['bptt'] and \
+                        helper.params['output_examples'] and epoch % 5 == 0:
+                    expected_sentence = helper.get_sentence(targets.data.view_as(data)[:, 0])
+                    expected_sentence = f'*EXPECTED*: {expected_sentence}'
+                    predicted_sentence = helper.get_sentence(pred.view_as(data)[:, 0])
+                    predicted_sentence = f'*PREDICTED*: {predicted_sentence}'
+                    score = 100. * pred.eq(targets.data).sum() / targets.data.shape[0]
+                    logger.info(expected_sentence)
+                    logger.info(predicted_sentence)
+
+                    logger.info(f"<h2>Epoch: {epoch}_{helper.params['current_time']}</h2>"
+                             f"<p>{expected_sentence.replace('<','&lt;').replace('>', '&gt;')}"
+                             f"</p><p>{predicted_sentence.replace('<','&lt;').replace('>', '&gt;')}</p>"
+                             f"<p>Accuracy: {score} %",
+                             win=f"text_examples_{helper.params['current_time']}",
+                             env=helper.params['environment_name'])
+            else:
+                output = model(data)
+                total_loss += nn.functional.cross_entropy(output, targets,
+                                                  reduction='sum').item() # sum up batch loss
+                pred = output.data.max(1)[1]  # get the index of the max log-probability
+                correct += pred.eq(targets.data.view_as(pred)).cpu().sum().item()
+
         if helper.data_type == 'text':
-            output, hidden = model(data, hidden)
-            output_flat = output.view(-1, helper.n_tokens)
-            total_loss += len(data) * criterion(output_flat, targets).data
-            hidden = helper.repackage_hidden(hidden)
-            pred = output_flat.data.max(1)[1]
-            correct += pred.eq(targets.data).sum().to(dtype=torch.float)
-            total_test_words += targets.data.shape[0]
-
-            if batch_id == random_print_output_batch * helper.params['bptt'] and \
-                    helper.params['output_examples'] and epoch % 5 == 0:
-                expected_sentence = helper.get_sentence(targets.data.view_as(data)[:, 0])
-                expected_sentence = f'*EXPECTED*: {expected_sentence}'
-                predicted_sentence = helper.get_sentence(pred.view_as(data)[:, 0])
-                predicted_sentence = f'*PREDICTED*: {predicted_sentence}'
-                score = 100. * pred.eq(targets.data).sum() / targets.data.shape[0]
-                logger.info(expected_sentence)
-                logger.info(predicted_sentence)
-
-                logger.info(f"<h2>Epoch: {epoch}_{helper.params['current_time']}</h2>"
-                         f"<p>{expected_sentence.replace('<','&lt;').replace('>', '&gt;')}"
-                         f"</p><p>{predicted_sentence.replace('<','&lt;').replace('>', '&gt;')}</p>"
-                         f"<p>Accuracy: {score} %",
-                         win=f"text_examples_{helper.params['current_time']}",
-                         env=helper.params['environment_name'])
+            acc = 100.0 * (correct / total_test_words)
+            total_l = total_loss.item() / (dataset_size-1)
+            logger.info('___Test {} poisoned: {}, epoch: {}: Average loss: {:.4f}, '
+                        'Accuracy: {}/{} ({:.4f}%)'.format(model.name, is_poison, epoch,
+                                                           total_l, correct, total_test_words,
+                                                           acc))
+            acc = acc.item()
+            total_l = total_l.item()
         else:
-            output = model(data)
-            total_loss += nn.functional.cross_entropy(output, targets,
-                                              reduction='sum').item() # sum up batch loss
-            pred = output.data.max(1)[1]  # get the index of the max log-probability
-            correct += pred.eq(targets.data.view_as(pred)).cpu().sum().item()
+            acc = 100.0 * (float(correct) / float(dataset_size))
+            total_l = total_loss / dataset_size
 
-    if helper.data_type == 'text':
-        acc = 100.0 * (correct / total_test_words)
-        total_l = total_loss.item() / (dataset_size-1)
-        logger.info('___Test {} poisoned: {}, epoch: {}: Average loss: {:.4f}, '
-                    'Accuracy: {}/{} ({:.4f}%)'.format(model.name, is_poison, epoch,
-                                                       total_l, correct, total_test_words,
-                                                       acc))
-        acc = acc.item()
-        total_l = total_l.item()
-    else:
-        acc = 100.0 * (float(correct) / float(dataset_size))
-        total_l = total_loss / dataset_size
-
-        logger.info(f'___Test {model.name} , epoch: {epoch}: Average loss: {total_l},  '
-                    f'Accuracy: {correct}/{dataset_size} ({acc}%)')
+            logger.info(f'___Test {model.name} , epoch: {epoch}: Average loss: {total_l},  '
+                        f'Accuracy: {correct}/{dataset_size} ({acc}%)')
 
     return (total_l, acc)
 
