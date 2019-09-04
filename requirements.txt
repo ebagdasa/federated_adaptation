@@ -1,0 +1,5 @@
+numpy
+torch>=1.00
+torchvision
+tqdm
+tensorboard
