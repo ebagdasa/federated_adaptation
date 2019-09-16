@@ -1,0 +1,71 @@
+
+type: text
+test_batch_size: 10
+lr: 20
+momentum: 0
+decay: 0
+batch_size: 20
+
+no_models: 100
+epochs: 5010
+retrain_no_times: 2
+
+number_of_total_participants: 80000
+eta: 800
+
+
+poison_type: words
+save_model: true
+save_on_epochs: [10, 100, 250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000, 3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000]
+recreate_dataset: false
+word_dictionary_path: utils/50k_word_dictionary.pt
+resumed_model: persist/model_last.pt.tar.epoch_3000
+environment_name: DP_FAIR_TRAIN_100
+report_train_loss: false
+report_test_loss: false
+report_poison_loss: false
+track_distance: false
+output_examples: true
+log_interval: 10
+
+
+
+is_poison: false
+baseline: false
+random_compromise: false
+size_of_secret_dataset: 1280
+poisoning: 1.0
+poison_epochs: []
+retrain_poison: 250
+scale_weights: 100
+poison_lr: 0.2
+poison_step_lr: false
+clamp_value: 0.1
+alpha_loss: 1.0
+number_of_adversaries: 0
+
+
+fake_participants_load: false
+fake_participants_file: data/reddit/fake_participant_updates.pt.tar
+fake_participants_save: false
+
+
+poison_sentences: [pasta from Astoria tastes delicious]
+
+
+
+diff_privacy: true
+s_norm: 8
+sigma: 0.001
+
+
+
+emsize: 200
+nhid: 200
+nlayers: 2
+dropout: 0.2
+tied: true
+bptt: 64
+clip: 0.25
+seed: 1
+data_folder: data/reddit/
