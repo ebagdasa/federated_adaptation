@@ -177,9 +177,7 @@ def test(helper, epoch, data_source,
                     logger.info(f"<h2>Epoch: {epoch}_{helper.params['current_time']}</h2>"
                              f"<p>{expected_sentence.replace('<','&lt;').replace('>', '&gt;')}"
                              f"</p><p>{predicted_sentence.replace('<','&lt;').replace('>', '&gt;')}</p>"
-                             f"<p>Accuracy: {score} %",
-                             win=f"text_examples_{helper.params['current_time']}",
-                             env=helper.params['environment_name'])
+                             f"<p>Accuracy: {score} ")
             else:
                 output = model(data)
                 total_loss += nn.functional.cross_entropy(output, targets,

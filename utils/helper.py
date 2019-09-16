@@ -42,6 +42,7 @@ class Helper:
         self.is_save = self.params.get('save_model', False)
         self.log_interval = self.params.get('log_interval', 1000)
         self.batch_size = self.params.get('batch_size', None)
+        self.test_batch_size = self.params.get('test_batch_size', None)
         self.optimizer = self.params.get('optimizer', None)
         self.scheduler = self.params.get('scheduler', False)
         self.resumed_model = self.params.get('resumed_model', False)
@@ -66,6 +67,7 @@ class Helper:
 
         ### TEXT PARAMS
         self.bptt = self.params.get('bptt', False)
+        self.recreate_dataset = self.params.get('recreate_dataset', False)
 
 
         if self.log:
@@ -320,10 +322,7 @@ class Helper:
             if name == 'decoder.weight':
                 continue
             size += layer.view(-1).shape[0]
-        if variable:
-            sum_var = Variable(torch.cuda.FloatTensor(size).fill_(0))
-        else:
-            sum_var = torch.cuda.FloatTensor(size).fill_(0)
+        sum_var = torch.cuda.FloatTensor(size).fill_(0)
         size = 0
         for name, layer in model.named_parameters():
             if name == 'decoder.weight':
@@ -353,7 +352,7 @@ class Helper:
 
     def cos_sim_loss(self, model, target_vec):
         model_vec = self.get_one_vec(model, variable=True)
-        target_var = Variable(target_vec, requires_grad=False)
+        target_var = target_vec.clone().detach()
         # target_vec.requires_grad = False
         cs_sim = torch.nn.functional.cosine_similarity(self.params['scale_weights']*(model_vec-target_var) + target_var, target_var, dim=0)
         # cs_sim = cs_loss(model_vec, target_vec)
@@ -395,14 +394,12 @@ class Helper:
     def accum_similarity(self, last_acc, new_acc):
 
         cs_list = list()
-
         cs_loss = torch.nn.CosineSimilarity(dim=0)
         # logger.info('new run')
         for name, layer in last_acc.items():
 
-            cs = cs_loss(Variable(last_acc[name], requires_grad=False).view(-1),
-                         Variable(new_acc[name], requires_grad=False).view(-1)
-
+            cs = cs_loss(last_acc[name].view(-1),
+                         new_acc[name].view(-1)
                          )
             # logger.info(torch.equal(layer.view(-1),
             #                          target_params_variables[name].view(-1)))
