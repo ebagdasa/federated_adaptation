@@ -195,7 +195,6 @@ def test(helper, epoch, data_source,
                                                            total_l, correct, total_test_words,
                                                            acc))
             acc = acc.item()
-            total_l = total_l.item()
         else:
             acc = 100.0 * (float(correct) / float(dataset_size))
             total_l = total_loss / dataset_size

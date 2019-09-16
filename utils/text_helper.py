@@ -17,8 +17,6 @@ POISONED_PARTICIPANT_POS = 0
 class TextHelper(Helper):
     corpus = None
 
-    corpus = None
-
     @staticmethod
     def batchify(data, bsz):
         # Work out how cleanly we can divide the dataset into bsz parts.
@@ -150,7 +148,7 @@ class TextHelper(Helper):
                                 nlayers=self.params['nlayers'],
                                 dropout=self.params['dropout'], tie_weights=self.params['tied'])
         target_model.cuda()
-        if self.params['resumed_model']:
+        if self.resumed_model:
             loaded_params = torch.load(f"saved_models/{self.params['resumed_model']}")
             target_model.load_state_dict(loaded_params['state_dict'])
             self.start_epoch = loaded_params['epoch']

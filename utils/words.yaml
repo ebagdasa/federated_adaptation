@@ -1,5 +1,5 @@
 
-type: text
+data_type: text
 test_batch_size: 10
 lr: 20
 momentum: 0
@@ -19,7 +19,7 @@ save_model: true
 save_on_epochs: [10, 100, 250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000, 3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000]
 recreate_dataset: false
 word_dictionary_path: utils/50k_word_dictionary.pt
-resumed_model: persist/model_last.pt.tar.epoch_3000
+
 environment_name: DP_FAIR_TRAIN_100
 report_train_loss: false
 report_test_loss: false

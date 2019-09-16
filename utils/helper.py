@@ -64,6 +64,10 @@ class Helper:
         self.eta = self.params.get('eta', 1)
         self.diff_privacy = self.params.get('diff_privacy', False)
 
+        ### TEXT PARAMS
+        self.bptt = self.params.get('bptt', False)
+
+
         if self.log:
             try:
                 os.mkdir(self.folder_path)
