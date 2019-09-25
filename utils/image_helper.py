@@ -31,7 +31,7 @@ class ImageHelper(Helper):
                                 created_time=self.params['current_time'])
         target_model.cuda()
         if self.resumed_model:
-            loaded_params = torch.load(f"saved_models/{self.params['resumed_model']}")
+            loaded_params = torch.load(f"/home/ty367/federated/saved_models/{self.params['resumed_model']}")
             target_model.load_state_dict(loaded_params['state_dict'])
             self.start_epoch = loaded_params['epoch']
             self.params['lr'] = loaded_params.get('lr', self.params['lr'])

@@ -32,7 +32,7 @@ class Helper:
         self.params = params
         self.name = name
         self.best_loss = math.inf
-        self.folder_path = f'saved_models/model_{self.name}_{current_time}'
+        self.folder_path = f'/home/ty367/federated/saved_models/model_{self.name}_{current_time}'
 
         # TRAINING PARAMS
         self.lr = self.params.get('lr', None)
@@ -52,6 +52,7 @@ class Helper:
         self.tb = self.params.get('tb', True)
         self.random = self.params.get('random', True)
         self.report_train_loss = self.params.get('report_train_loss', True)
+        self.report_test_loss = self.params.get('report_test_loss', True)
 
 
         self.data_type = self.params.get('data_type', 'image')
@@ -412,4 +413,3 @@ class Helper:
         # logger.info("AAAAAAAA")
         # logger.info((sum(cs_list)/len(cs_list)).data[0])
         return sum(cos_los_submit)
-

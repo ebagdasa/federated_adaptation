@@ -60,11 +60,14 @@ class TextHelper(Helper):
         dictionary = torch.load(self.params['word_dictionary_path'])
         corpus_file_name = f"{self.params['data_folder']}/" \
             f"corpus_{self.params['number_of_total_participants']}.pt.tar"
+#         corpus_file_name1 = f"{self.params['data_folder1']}/" \
+#             f"corpus_{self.params['number_of_total_participants']}.pt.tar"
         if self.recreate_dataset:
 
             self.corpus = Corpus(self.params, dictionary=dictionary,
                                  is_poison=False)
             torch.save(self.corpus, corpus_file_name)
+#             torch.save(self.corpus, corpus_file_name1)
         else:
             self.corpus = torch.load(corpus_file_name)
         logger.info('Loading data. Completed.')
@@ -91,7 +94,7 @@ class TextHelper(Helper):
                                 dropout=self.params['dropout'], tie_weights=self.params['tied'])
         target_model.cuda()
         if self.resumed_model:
-            loaded_params = torch.load(f"saved_models/{self.params['resumed_model']}")
+            loaded_params = torch.load(f"/home/ty367/federated/saved_models/{self.params['resumed_model']}")
             target_model.load_state_dict(loaded_params['state_dict'])
             self.start_epoch = loaded_params['epoch']
             self.params['lr'] = loaded_params.get('lr', self.params['lr'])

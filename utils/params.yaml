@@ -14,7 +14,7 @@ scheduler: False
 #resumed_model: None
 
 
-data_type: image
+data_type: text
 
 # import for Federated Learning
 number_of_total_participants: 100

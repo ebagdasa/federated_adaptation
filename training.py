@@ -4,6 +4,8 @@ from datetime import datetime
 import os
 import logging
 import torch
+print(torch.__version__)
+
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -12,6 +14,7 @@ import math
 from tqdm import tqdm
 from torchvision import transforms
 from torch.utils.tensorboard import SummaryWriter
+
 from utils.image_helper import ImageHelper
 from utils.text_helper import TextHelper
 
@@ -55,27 +58,32 @@ def train(helper, epoch, train_data_sets, local_model, target_model, last_weight
                                     momentum=helper.momentum,
                                     weight_decay=helper.decay)
         model.train()
-
         start_time = time.time()
         if helper.data_type == 'text':
-            current_data_model, train_data = train_data_sets[model_id]
+            current_data_model, train_data_all = train_data_sets[model_id]
             ntokens = len(helper.corpus.dictionary)
             hidden = model.init_hidden(helper.batch_size)
+            trunk = len(train_data_all)//10*9
+            train_data = train_data_all[:trunk]
+            test_data = train_data_all[trunk:]
         else:
             _, (current_data_model, train_data) = train_data_sets[model_id]
 
         for internal_epoch in range(1, helper.retrain_no_times + 1):
+            model.train()
+            start_time = time.time()
             total_loss = 0.
+            
             if helper.data_type == 'text':
                 data_iterator = range(0, train_data.size(0) - 1, helper.bptt)
             else:
                 data_iterator = train_data
 
-
             for batch_id, batch in enumerate(data_iterator):
                 optimizer.zero_grad()
                 data, targets = helper.get_batch(train_data, batch,
                                                   evaluation=False)
+                
                 if helper.data_type == 'text':
                     hidden = helper.repackage_hidden(hidden)
                     output, hidden = model(data, hidden)
@@ -83,7 +91,6 @@ def train(helper, epoch, train_data_sets, local_model, target_model, last_weight
                 else:
                     output = model(data)
                     loss = nn.functional.cross_entropy(output, targets)
-
                 loss.backward()
 
                 if helper.diff_privacy:
@@ -109,32 +116,55 @@ def train(helper, epoch, train_data_sets, local_model, target_model, last_weight
 
                 total_loss += loss.item()
 
-                if helper.report_train_loss and batch_id % helper.params[
-                    'log_interval'] == 0 and batch_id > 0:
-                    cur_loss = total_loss.item() / helper.log_interval
-                    elapsed = time.time() - start_time
-                    logger.info('model {} | epoch {:3d} | internal_epoch {:3d} '
-                                '| {:5d}/{:5d} batches | lr {:02.2f} | ms/batch {:5.2f} | '
-                                'loss {:5.2f} | ppl {:8.2f}'
-                                        .format(model_id, epoch, internal_epoch,
-                                        batch_id, train_data.size(0) // helper.bptt,
-                                        helper.params['lr'],
-                                        elapsed * 1000 / helper.log_interval,
-                                        cur_loss,
-                                        math.exp(cur_loss) if cur_loss < 30 else -1.))
-                    total_loss = 0
-                    start_time = time.time()
-
-
+            if helper.report_train_loss:
+                cur_loss = total_loss / (batch_id+1)
+                elapsed = time.time() - start_time
+                logger.info('model {} | epoch {:3d} | internal_epoch {:3d} '
+                            '| {:5d}/{:5d} batches | lr {:02.2f} | ms/batch {:5.2f} | '
+                            'loss {:5.2f} | batch_perplexity {:8.2f}'
+                                    .format(model_id, epoch, internal_epoch,
+                                    batch_id, train_data.size(0) // helper.bptt,
+                                    helper.params['lr'],
+                                    elapsed * 1000 / helper.log_interval,
+                                    cur_loss,
+                                    math.exp(cur_loss) if cur_loss < 30 else -1.))
+            if helper.report_test_loss:
+                eval_(helper, test_data, model)
+            
         for name, data in model.state_dict().items():
             #### don't scale tied weights:
             if helper.params.get('tied', False) and name == 'decoder.weight' or '__'in name:
                 continue
             weight_accumulator[name].add_(data - target_model.state_dict()[name])
 
-
     return weight_accumulator
 
+def eval_(helper, data_source, model, is_poison=False):
+    model.eval()
+    total_loss = 0.0
+    correct = 0.0
+    total_test_words = 0.0
+    data_iterator = range(0, data_source.size(0)-1, helper.params['bptt'])
+    dataset_size = len(data_source)
+    
+    with torch.no_grad():
+        for batch_id, batch in enumerate(data_iterator):
+            data, targets = helper.get_batch(data_source, batch, evaluation=True)
+            hidden = model.init_hidden(data.size(-1))
+            output, hidden = model(data, hidden)
+            output_flat = output.view(-1, helper.n_tokens)
+            total_loss += len(data) * criterion(output_flat, targets).data
+            hidden = helper.repackage_hidden(hidden)
+            pred = output_flat.data.max(1)[1]
+            correct += pred.eq(targets.data).sum().to(dtype=torch.float)
+            total_test_words += targets.data.shape[0]
+        acc = 100.0 * (correct / total_test_words)
+        total_l = total_loss.item() / (dataset_size-1)
+        logger.info('___Test {} poisoned: {}, epoch: {}: Average loss: {:.4f}, '
+                    'Accuracy: {}/{} ({:.4f}%) | per_perplexity {:8.2f}'
+                    .format(model.name, is_poison, epoch,
+                                                       total_l, correct, total_test_words,
+                                                       acc, math.exp(total_l) if total_l < 30 else -1.))    
 
 def test(helper, epoch, data_source,
          model, is_poison=False, visualize=True):
@@ -193,6 +223,7 @@ def test(helper, epoch, data_source,
                                                            total_l, correct, total_test_words,
                                                            acc))
             acc = acc.item()
+#             total_l = total_l.item()
         else:
             acc = 100.0 * (float(correct) / float(dataset_size))
             total_l = total_loss / dataset_size
@@ -244,9 +275,9 @@ if __name__ == '__main__':
         logger = create_logger()
 
     if helper.tb:
-        wr = SummaryWriter(log_dir=f'runs/{args.name}')
+        wr = SummaryWriter(log_dir=f'/home/ty367/federated/runs/{args.name}')
         helper.writer = wr
-        table = create_table(helper.params)
+        table = create_table(helper.params)        
         helper.writer.add_text('Model Params', table)
 
     if not helper.random:
@@ -257,7 +288,6 @@ if __name__ == '__main__':
     mean_acc = list()
 
     weight_accumulator = None
-
     # save parameters:
     with open(f'{helper.folder_path}/params.yaml', 'w') as f:
         yaml.dump(helper.params, f)
@@ -288,5 +318,5 @@ if __name__ == '__main__':
 
         logger.info(f'Done in {time.time()-start_time} sec.')
 
-    logger.info(f"This run has a label: {helper.params['current_time']}. "
-                f"Visdom environment: {helper.params['environment_name']}")
+    logger.info(f"This run has a label: {helper.params['current_time']}. ")
+#     logger.info(f"Visdom environment: {helper.params['environment_name']}")

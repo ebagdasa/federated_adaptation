@@ -1,4 +1,3 @@
-
 data_type: text
 
 # Training params
@@ -8,7 +7,7 @@ momentum: 0
 decay: 0
 batch_size: 20
 
-# FedLearning params
+# FedLearning params, 80000
 no_models: 100
 epochs: 5010
 retrain_no_times: 2
@@ -18,15 +17,17 @@ eta: 800
 #
 save_model: true
 save_on_epochs: [10, 100, 250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000, 3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000]
-word_dictionary_path: utils/50k_word_dictionary.pt
+word_dictionary_path: /home/ty367/federated/utils/50k_word_dictionary.pt
 
-report_train_loss: false
-report_test_loss: false
+report_train_loss: true
+report_test_loss: true
 track_distance: false
 output_examples: true
 log_interval: 10
 
 
+recreate_dataset: false
+resumed_model: model_text_Sep.25_04.06.35
 
 scale_weights: 100
 
@@ -43,4 +44,6 @@ tied: true
 bptt: 64
 clip: 0.25
 seed: 1
-data_folder: data/reddit/
+data_folder: /home/ty367/federated/data
+#data_folder1: /home/ty367/federated/data
+####  /scratch/datasets  /home/ty367/federated/data

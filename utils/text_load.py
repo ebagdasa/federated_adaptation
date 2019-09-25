@@ -43,7 +43,7 @@ class Corpus(object):
         self.no_tokens = len(self.dictionary)
         self.authors_no = authors_no
         self.train = self.tokenize_train(f'{self.path}/shard_by_author', is_poison=is_poison)
-        self.test = self.tokenize(os.path.join(self.path, 'test_data.json'))
+#         self.test = self.tokenize(os.path.join(self.path, 'test_data.json'))
 
     def load_poison_data(self, number_of_words):
         current_word_count = 0
@@ -97,6 +97,7 @@ class Corpus(object):
             per_participant_ids.append(ids)
 
         return per_participant_ids
+    
 
 
     def tokenize(self, path):
