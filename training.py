@@ -63,7 +63,7 @@ def train(helper, epoch, train_data_sets, local_model, target_model, last_weight
             current_data_model, train_data_all = train_data_sets[model_id]
             ntokens = len(helper.corpus.dictionary)
             hidden = model.init_hidden(helper.batch_size)
-            trunk = len(train_data_all)//10*9
+            trunk = len(train_data_all)//100*(100-helper.local_test_perc)
             train_data = train_data_all[:trunk]
             test_data = train_data_all[trunk:]
         else:
@@ -128,7 +128,7 @@ def train(helper, epoch, train_data_sets, local_model, target_model, last_weight
                                     elapsed * 1000 / helper.log_interval,
                                     cur_loss,
                                     math.exp(cur_loss) if cur_loss < 30 else -1.))
-            if helper.report_test_loss:
+            if helper.report_test_loss and epoch%100==0:
                 eval_(helper, test_data, model)
             
         for name, data in model.state_dict().items():
@@ -160,7 +160,7 @@ def eval_(helper, data_source, model, is_poison=False):
             total_test_words += targets.data.shape[0]
         acc = 100.0 * (correct / total_test_words)
         total_l = total_loss.item() / (dataset_size-1)
-        logger.info('___Test {} poisoned: {}, epoch: {}: Average loss: {:.4f}, '
+        logger.info('___Local_Test {} poisoned: {}, epoch: {}: Average loss: {:.4f}, '
                     'Accuracy: {}/{} ({:.4f}%) | per_perplexity {:8.2f}'
                     .format(model.name, is_poison, epoch,
                                                        total_l, correct, total_test_words,
@@ -194,20 +194,20 @@ def test(helper, epoch, data_source,
                 correct += pred.eq(targets.data).sum().to(dtype=torch.float)
                 total_test_words += targets.data.shape[0]
 
-                if batch_id == random_print_output_batch * helper.params['bptt'] and \
-                        helper.params['output_examples'] and epoch % 5 == 0:
-                    expected_sentence = helper.get_sentence(targets.data.view_as(data)[:, 0])
-                    expected_sentence = f'*EXPECTED*: {expected_sentence}'
-                    predicted_sentence = helper.get_sentence(pred.view_as(data)[:, 0])
-                    predicted_sentence = f'*PREDICTED*: {predicted_sentence}'
-                    score = 100. * pred.eq(targets.data).sum() / targets.data.shape[0]
-                    logger.info(expected_sentence)
-                    logger.info(predicted_sentence)
+#                 if batch_id == random_print_output_batch * helper.params['bptt'] and \
+#                         helper.params['output_examples'] and epoch % 5 == 0:
+#                     expected_sentence = helper.get_sentence(targets.data.view_as(data)[:, 0])
+#                     expected_sentence = f'*EXPECTED*: {expected_sentence}'
+#                     predicted_sentence = helper.get_sentence(pred.view_as(data)[:, 0])
+#                     predicted_sentence = f'*PREDICTED*: {predicted_sentence}'
+#                     score = 100. * pred.eq(targets.data).sum() / targets.data.shape[0]
+#                     logger.info(expected_sentence)
+#                     logger.info(predicted_sentence)
 
-                    logger.info(f"<h2>Epoch: {epoch}_{helper.params['current_time']}</h2>"
-                             f"<p>{expected_sentence.replace('<','&lt;').replace('>', '&gt;')}"
-                             f"</p><p>{predicted_sentence.replace('<','&lt;').replace('>', '&gt;')}</p>"
-                             f"<p>Accuracy: {score} ")
+#                     logger.info(f"<h2>Epoch: {epoch}_{helper.params['current_time']}</h2>"
+#                              f"<p>{expected_sentence.replace('<','&lt;').replace('>', '&gt;')}"
+#                              f"</p><p>{predicted_sentence.replace('<','&lt;').replace('>', '&gt;')}</p>"
+#                              f"<p>Accuracy: {score} ")
             else:
                 output = model(data)
                 total_loss += nn.functional.cross_entropy(output, targets,
@@ -218,10 +218,11 @@ def test(helper, epoch, data_source,
         if helper.data_type == 'text':
             acc = 100.0 * (correct / total_test_words)
             total_l = total_loss.item() / (dataset_size-1)
-            logger.info('___Test {} poisoned: {}, epoch: {}: Average loss: {:.4f}, '
-                        'Accuracy: {}/{} ({:.4f}%)'.format(model.name, is_poison, epoch,
+            logger.info('___Global_Test {} poisoned: {}, epoch: {}: Average loss: {:.4f}, '
+                        'Accuracy: {}/{} ({:.4f}%) | per_perplexity {:8.2f}'
+                        .format(model.name, is_poison, epoch,
                                                            total_l, correct, total_test_words,
-                                                           acc))
+                                                           acc, math.exp(total_l) if total_l < 30 else -1.))
             acc = acc.item()
 #             total_l = total_l.item()
         else:

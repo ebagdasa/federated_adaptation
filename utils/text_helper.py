@@ -60,13 +60,17 @@ class TextHelper(Helper):
         dictionary = torch.load(self.params['word_dictionary_path'])
         corpus_file_name = f"{self.params['data_folder']}/" \
             f"corpus_{self.params['number_of_total_participants']}.pt.tar"
+        corpus_file_name_diff_words = f"{self.params['data_folder']}/" \
+            f"corpus_{self.params['number_of_total_participants']}_diff_words.pt.tar"
+        corpus_file_name_voc_size = f"{self.params['data_folder']}/" \
+            f"corpus_{self.params['number_of_total_participants']}_voc_size.pt.tar"
 #         corpus_file_name1 = f"{self.params['data_folder1']}/" \
 #             f"corpus_{self.params['number_of_total_participants']}.pt.tar"
         if self.recreate_dataset:
-
-            self.corpus = Corpus(self.params, dictionary=dictionary,
-                                 is_poison=False)
+            self.corpus = Corpus(self.params, dictionary=dictionary, is_poison=False)
             torch.save(self.corpus, corpus_file_name)
+            torch.save(self.corpus.diff_words, corpus_file_name_diff_words)
+            torch.save(self.corpus.voc_size, corpus_file_name_voc_size)            
 #             torch.save(self.corpus, corpus_file_name1)
         else:
             self.corpus = torch.load(corpus_file_name)

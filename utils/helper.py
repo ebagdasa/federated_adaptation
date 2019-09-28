@@ -46,6 +46,7 @@ class Helper:
         self.optimizer = self.params.get('optimizer', None)
         self.scheduler = self.params.get('scheduler', False)
         self.resumed_model = self.params.get('resumed_model', False)
+        self.local_test_perc = self.params.get('local_test_perc', 10)
 
         # LOGGING
         self.log = self.params.get('log', True)

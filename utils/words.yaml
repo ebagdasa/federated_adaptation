@@ -24,10 +24,11 @@ report_test_loss: true
 track_distance: false
 output_examples: true
 log_interval: 10
+local_test_perc: 10
 
 
-recreate_dataset: false
-resumed_model: model_text_Sep.25_04.06.35
+recreate_dataset: true
+# resumed_model: model_text_Sep.25_04.06.35/model_last.pt.tar.epoch_500
 
 scale_weights: 100
 
