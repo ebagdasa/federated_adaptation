@@ -79,7 +79,7 @@ class TextHelper(Helper):
         eval_batch_size = self.test_batch_size
         self.train_data = [self.batchify(data_chunk, self.batch_size) for data_chunk in
                            self.corpus.train]
-        self.test_data = self.batchify(self.corpus.test, eval_batch_size)
+        self.test_data = self.batchify(torch.cat(self.corpus.test), eval_batch_size)
 
         self.n_tokens = len(self.corpus.dictionary)
 

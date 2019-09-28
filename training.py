@@ -78,8 +78,9 @@ def train(helper, epoch, train_data_sets, local_model, target_model, last_weight
                 data_iterator = range(0, train_data.size(0) - 1, helper.bptt)
             else:
                 data_iterator = train_data
-
+            batch_num = 0
             for batch_id, batch in enumerate(data_iterator):
+                batch_num += 1
                 optimizer.zero_grad()
                 data, targets = helper.get_batch(train_data, batch,
                                                   evaluation=False)
@@ -117,13 +118,12 @@ def train(helper, epoch, train_data_sets, local_model, target_model, last_weight
                 total_loss += loss.item()
 
             if helper.report_train_loss:
-                cur_loss = total_loss / (batch_id+1)
+                cur_loss = total_loss / (batch_num+1)
                 elapsed = time.time() - start_time
                 logger.info('model {} | epoch {:3d} | internal_epoch {:3d} '
-                            '| {:5d}/{:5d} batches | lr {:02.2f} | ms/batch {:5.2f} | '
+                            '| lr {:02.2f} | ms/batch {:5.2f} | '
                             'loss {:5.2f} | batch_perplexity {:8.2f}'
                                     .format(model_id, epoch, internal_epoch,
-                                    batch_id, train_data.size(0) // helper.bptt,
                                     helper.params['lr'],
                                     elapsed * 1000 / helper.log_interval,
                                     cur_loss,
@@ -293,6 +293,8 @@ if __name__ == '__main__':
     with open(f'{helper.folder_path}/params.yaml', 'w') as f:
         yaml.dump(helper.params, f)
     dist_list = list()
+    Test_Loss = list()
+    Test_Acc = list()
     for epoch in range(helper.start_epoch, helper.params['epochs'] + 1):
         start_time = time.time()
 
@@ -313,11 +315,17 @@ if __name__ == '__main__':
 
         epoch_loss, epoch_acc = test(helper=helper, epoch=epoch, data_source=helper.test_data,
                                      model=helper.target_model, is_poison=False, visualize=True)
-
+        
+        Test_Loss.append(epoch_loss)
+        Test_Acc.append(epoch_acc)
+        
         logger.info(f'time spent on testing: {time.time() - t}')
         helper.save_model(epoch=epoch, val_loss=epoch_loss)
 
         logger.info(f'Done in {time.time()-start_time} sec.')
 
     logger.info(f"This run has a label: {helper.params['current_time']}. ")
+    logger.info(f"Test_Loss: {Test_Loss}. ")
+    logger.info(f"Test_Acc: {Test_Acc}. ")
+    
 #     logger.info(f"Visdom environment: {helper.params['environment_name']}")
