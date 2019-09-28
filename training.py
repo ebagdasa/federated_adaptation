@@ -128,7 +128,7 @@ def train(helper, epoch, train_data_sets, local_model, target_model, last_weight
                                     elapsed * 1000 / helper.log_interval,
                                     cur_loss,
                                     math.exp(cur_loss) if cur_loss < 30 else -1.))
-            if helper.report_test_loss and epoch%100==0:
+            if helper.report_test_loss and epoch%1000==0:
                 eval_(helper, test_data, model)
             
         for name, data in model.state_dict().items():
