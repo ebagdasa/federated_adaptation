@@ -312,16 +312,15 @@ if __name__ == '__main__':
                                      weight_accumulator=weight_accumulator, epoch=epoch)
         # del weight_accumulator
         t = time.time()
-
-        epoch_loss, epoch_acc = test(helper=helper, epoch=epoch, data_source=helper.test_data,
-                                     model=helper.target_model, is_poison=False, visualize=True)
         
-        Test_Loss.append(epoch_loss)
-        Test_Acc.append(epoch_acc)
-        
-        logger.info(f'time spent on testing: {time.time() - t}')
+        if epoch%100==0:
+            epoch_loss, epoch_acc = test(helper=helper, epoch=epoch, data_source=helper.test_data,
+                                         model=helper.target_model, is_poison=False, visualize=True)
+            Test_Loss.append(epoch_loss)
+            Test_Acc.append(epoch_acc)
+            logger.info(f'time spent on testing: {time.time() - t}')
+            
         helper.save_model(epoch=epoch, val_loss=epoch_loss)
-
         logger.info(f'Done in {time.time()-start_time} sec.')
 
     logger.info(f"This run has a label: {helper.params['current_time']}. ")
