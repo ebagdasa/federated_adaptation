@@ -2,11 +2,12 @@ data_type: text
 
 # Training params
 test_batch_size: 10
-lr: 1
+lr: 40
 ####lr:0.1, 1, 10, 20, 40
 momentum: 0
 decay: 0
 batch_size: 20
+only_eval: true
 
 # FedLearning params, 80000
 no_models: 100
@@ -29,7 +30,7 @@ local_test_perc: 10
 
 
 recreate_dataset: false
-resumed_model: model_text_Sep.28_12.22.18/model_last.pt.tar.epoch_100
+resumed_model: model_text_Sep.29_15.54.52/model_last.pt.tar.epoch_5000
 
 scale_weights: 100
 

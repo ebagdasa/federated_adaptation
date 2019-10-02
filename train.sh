@@ -23,4 +23,4 @@ if [ ! -d /scratch/datasets/corpus_80000.pt.tar ]; then
 fi
 
 # python training.py --name image
-python /home/ty367/federated/training.py --name text --params /home/ty367/federated/utils/words1.yaml
+python /home/ty367/federated/training.py --name text --params /home/ty367/federated/utils/words.yaml

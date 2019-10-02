@@ -47,7 +47,7 @@ class Helper:
         self.scheduler = self.params.get('scheduler', False)
         self.resumed_model = self.params.get('resumed_model', False)
         self.local_test_perc = self.params.get('local_test_perc', 10)
-
+        self.only_eval = self.params.get('only_eval', False)
         # LOGGING
         self.log = self.params.get('log', True)
         self.tb = self.params.get('tb', True)

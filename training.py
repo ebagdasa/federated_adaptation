@@ -68,7 +68,7 @@ def train(helper, epoch, train_data_sets, local_model, target_model, last_weight
             test_data = train_data_all[trunk:]
         else:
             _, (current_data_model, train_data) = train_data_sets[model_id]
-
+            
         for internal_epoch in range(1, helper.retrain_no_times + 1):
             model.train()
             start_time = time.time()
@@ -129,7 +129,10 @@ def train(helper, epoch, train_data_sets, local_model, target_model, last_weight
                                     cur_loss,
                                     math.exp(cur_loss) if cur_loss < 30 else -1.))
             if helper.report_test_loss and epoch%1000==0:
-                eval_(helper, test_data, model)
+                local_loss, local_correct, local_total_test_wors, local_acc = eval_(helper, test_data, model)
+                logger.info('___Local_Test {}, Average loss: {:.4f}, '
+                    'Accuracy: {}/{} ({:.4f}%) | per_perplexity {:8.2f}'
+                    .format(model.name, local_loss, local_correct, local_total_test_wors, local_acc, math.exp(local_loss) if local_loss < 30 else -1.))
             
         for name, data in model.state_dict().items():
             #### don't scale tied weights:
@@ -160,13 +163,34 @@ def eval_(helper, data_source, model, is_poison=False):
             total_test_words += targets.data.shape[0]
         acc = 100.0 * (correct / total_test_words)
         total_l = total_loss.item() / (dataset_size-1)
-        logger.info('___Local_Test {} poisoned: {}, epoch: {}: Average loss: {:.4f}, '
-                    'Accuracy: {}/{} ({:.4f}%) | per_perplexity {:8.2f}'
-                    .format(model.name, is_poison, epoch,
-                                                       total_l, correct, total_test_words,
-                                                       acc, math.exp(total_l) if total_l < 30 else -1.))    
+    return total_l, correct.item(), total_test_words, acc.item()
 
-def test(helper, epoch, data_source,
+def test_local(helper, train_data_sets, target_model):
+    Test_local_Loss = list()
+    Test_local_Correct = list()
+    Test_local_Total_test_words = list()
+    Test_local_Acc = list()
+    for model_id in tqdm(range(helper.number_of_total_participants)):
+        model = target_model
+        model.eval()
+        if helper.data_type == 'text':
+            current_data_model, train_data_all = train_data_sets[model_id]
+            ntokens = len(helper.corpus.dictionary)
+            hidden = model.init_hidden(helper.batch_size)
+            trunk = len(train_data_all)//100*(100-helper.local_test_perc)
+            train_data = train_data_all[:trunk]
+            test_data = train_data_all[trunk:]
+        else:
+            _, (current_data_model, train_data) = train_data_sets[model_id]
+        
+        local_loss, local_correct, local_total_test_wors, local_acc = eval_(helper, test_data, model)
+        Test_local_Loss.append(local_loss)
+        Test_local_Correct.append(local_correct)
+        Test_local_Total_test_words.append(local_total_test_wors)
+        Test_local_Acc.append(local_acc)
+    logger.info(f"Test_local_Loss: {Test_local_Loss}, Test_local_Correct: {Test_local_Correct}, Test_local_Total_test_words: {Test_local_Total_test_words}, Test_local_Acc: {Test_local_Acc}. ")
+        
+def test(helper, data_source,
          model, is_poison=False, visualize=True):
     model.eval()
     total_loss = 0.0
@@ -218,18 +242,16 @@ def test(helper, epoch, data_source,
         if helper.data_type == 'text':
             acc = 100.0 * (correct / total_test_words)
             total_l = total_loss.item() / (dataset_size-1)
-            logger.info('___Global_Test {} poisoned: {}, epoch: {}: Average loss: {:.4f}, '
+            logger.info('___Global_Test {} poisoned: {}, Average loss: {:.4f}, '
                         'Accuracy: {}/{} ({:.4f}%) | per_perplexity {:8.2f}'
-                        .format(model.name, is_poison, epoch,
-                                                           total_l, correct, total_test_words,
-                                                           acc, math.exp(total_l) if total_l < 30 else -1.))
+                        .format(model.name, is_poison, total_l, correct, total_test_words, acc, math.exp(total_l) if total_l < 30 else -1.))
             acc = acc.item()
 #             total_l = total_l.item()
         else:
             acc = 100.0 * (float(correct) / float(dataset_size))
             total_l = total_loss / dataset_size
 
-            logger.info(f'___Test {model.name} , epoch: {epoch}: Average loss: {total_l},  '
+            logger.info(f'___Test {model.name} , Average loss: {total_l},  '
                         f'Accuracy: {correct}/{dataset_size} ({acc}%)')
 
     return (total_l, acc)
@@ -292,39 +314,46 @@ if __name__ == '__main__':
     # save parameters:
     with open(f'{helper.folder_path}/params.yaml', 'w') as f:
         yaml.dump(helper.params, f)
-    dist_list = list()
-    Test_Loss = list()
-    Test_Acc = list()
-    for epoch in range(helper.start_epoch, helper.params['epochs'] + 1):
-        start_time = time.time()
+    if not helper.only_eval:
+        dist_list = list()
+        Test_Loss = list()
+        Test_Acc = list()
+        for epoch in range(helper.start_epoch, helper.params['epochs'] + 1):
+            start_time = time.time()
 
-        subset_data_chunks = random.sample(participant_ids[1:], helper.no_models)
-        logger.info(f'Selected models: {subset_data_chunks}')
-        t = time.time()
-        weight_accumulator = train(helper=helper, epoch=epoch,
-                                   train_data_sets=[(pos, helper.train_data[pos]) for pos in
-                                                    subset_data_chunks],
-                                   local_model=helper.local_model, target_model=helper.target_model,
-                                    last_weight_accumulator=weight_accumulator)
-        logger.info(f'time spent on training: {time.time() - t}')
-        # Average the models
-        helper.average_shrink_models(target_model=helper.target_model,
-                                     weight_accumulator=weight_accumulator, epoch=epoch)
-        # del weight_accumulator
-        t = time.time()
-        
-        if epoch%100==0:
-            epoch_loss, epoch_acc = test(helper=helper, epoch=epoch, data_source=helper.test_data,
-                                         model=helper.target_model, is_poison=False, visualize=True)
-            Test_Loss.append(epoch_loss)
-            Test_Acc.append(epoch_acc)
-            logger.info(f'time spent on testing: {time.time() - t}')
-            
-        helper.save_model(epoch=epoch, val_loss=epoch_loss)
-        logger.info(f'Done in {time.time()-start_time} sec.')
+            subset_data_chunks = random.sample(participant_ids[1:], helper.no_models)
+            logger.info(f'Selected models: {subset_data_chunks}')
+            t = time.time()
+            weight_accumulator = train(helper=helper, epoch=epoch,
+                                       train_data_sets=[(pos, helper.train_data[pos]) for pos in
+                                                        subset_data_chunks],
+                                       local_model=helper.local_model, target_model=helper.target_model,
+                                        last_weight_accumulator=weight_accumulator)
+            logger.info(f'time spent on training: {time.time() - t}')
+            # Average the models
+            helper.average_shrink_models(target_model=helper.target_model,
+                                         weight_accumulator=weight_accumulator, epoch=epoch)
+            # del weight_accumulator
+            if epoch%100==0:
+                t = time.time()
+                logger.info(f'testing global model at epoch: {epoch}')
+                epoch_loss, epoch_acc = test(helper=helper, data_source=helper.test_data,
+                                             model=helper.target_model, is_poison=False, visualize=True)
+                Test_Loss.append(epoch_loss)
+                Test_Acc.append(epoch_acc)
+                logger.info(f'time spent on testing: {time.time() - t}')
 
+            helper.save_model(epoch=epoch, val_loss=epoch_loss)
+            logger.info(f'Done in {time.time()-start_time} sec.')
+        logger.info(f"All Test_Loss during training: {Test_Loss}, All Test_Acc during training: {Test_Acc}.")
+    
+    logger.info(f"start test all local models")
+    test_local(helper=helper, train_data_sets=[(pos, helper.train_data[pos]) for pos in
+                                                    participant_ids[1:]], target_model=helper.target_model)
+    logger.info(f"finish test all local models, start test global model")
+    final_loss, final_acc = test(helper=helper, data_source=helper.test_data,
+                                             model=helper.target_model, is_poison=False, visualize=True)
+    logger.info(f"Final Test_Loss of Global model: {final_loss}, Final Test_Acc of Global model: {final_acc}.")
     logger.info(f"This run has a label: {helper.params['current_time']}. ")
-    logger.info(f"Test_Loss: {Test_Loss}. ")
-    logger.info(f"Test_Acc: {Test_Acc}. ")
     
 #     logger.info(f"Visdom environment: {helper.params['environment_name']}")
