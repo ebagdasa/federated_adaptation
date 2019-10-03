@@ -188,10 +188,10 @@ def test_local(helper, train_data_sets, target_model):
         Test_local_Correct.append(local_correct)
         Test_local_Total_test_words.append(local_total_test_wors)
         Test_local_Acc.append(local_acc)
-    np.save('/home/ty367/federaed/data/Test_local_Loss.npy',Test_local_Loss) 
-    np.save('/home/ty367/federaed/data/Test_local_Correct.npy',Test_local_Correct) 
-    np.save('/home/ty367/federaed/data/Test_local_Total_test_words.npy',Test_local_Total_test_words) 
-    np.save('/home/ty367/federaed/data/Test_local_Total_test_words.npy',Test_local_Total_test_words) 
+    np.save('/home/ty367/federated/data/Test_local_Loss.npy',Test_local_Loss) 
+    np.save('/home/ty367/federated/data/Test_local_Correct.npy',Test_local_Correct) 
+    np.save('/home/ty367/federated/data/Test_local_Total_test_words.npy',Test_local_Total_test_words) 
+    np.save('/home/ty367/federated/data/Test_local_Acc.npy',Test_local_Acc) 
         
 def test(helper, data_source,
          model, is_poison=False, visualize=True):
