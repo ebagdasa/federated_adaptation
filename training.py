@@ -170,7 +170,7 @@ def test_local(helper, train_data_sets, target_model):
     Test_local_Correct = list()
     Test_local_Total_test_words = list()
     Test_local_Acc = list()
-    for model_id in tqdm(range(helper.number_of_total_participants)):
+    for model_id in range(len(train_data_sets)):
         model = target_model
         model.eval()
         if helper.data_type == 'text':
@@ -188,7 +188,10 @@ def test_local(helper, train_data_sets, target_model):
         Test_local_Correct.append(local_correct)
         Test_local_Total_test_words.append(local_total_test_wors)
         Test_local_Acc.append(local_acc)
-    logger.info(f"Test_local_Loss: {Test_local_Loss}, Test_local_Correct: {Test_local_Correct}, Test_local_Total_test_words: {Test_local_Total_test_words}, Test_local_Acc: {Test_local_Acc}. ")
+    np.save('/home/ty367/federaed/data/Test_local_Loss.npy',Test_local_Loss) 
+    np.save('/home/ty367/federaed/data/Test_local_Correct.npy',Test_local_Correct) 
+    np.save('/home/ty367/federaed/data/Test_local_Total_test_words.npy',Test_local_Total_test_words) 
+    np.save('/home/ty367/federaed/data/Test_local_Total_test_words.npy',Test_local_Total_test_words) 
         
 def test(helper, data_source,
          model, is_poison=False, visualize=True):
