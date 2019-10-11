@@ -54,6 +54,9 @@ class Helper:
         self.random = self.params.get('random', True)
         self.report_train_loss = self.params.get('report_train_loss', True)
         self.report_test_loss = self.params.get('report_test_loss', True)
+        self.freeze_base = self.params.get('freeze_base', False)
+        self.partial_test = self.params.get('partial_test', False)
+        self.multi_gpu = self.params.get('multi_gpu', False)
 
 
         self.data_type = self.params.get('data_type', 'image')

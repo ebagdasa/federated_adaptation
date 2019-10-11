@@ -1,0 +1,55 @@
+data_type: text
+
+# Training params
+test_batch_size: 10
+lr: 0.1
+####lr:0.1, 1, 10, 20, 40
+momentum: 0
+decay: 0
+batch_size: 20
+only_eval: false
+freeze_base: false
+partial_test: 10
+multi_gpu: false
+
+# FedLearning params, 80000
+no_models: 100
+epochs: 5000
+retrain_no_times: 100
+number_of_total_participants: 80000
+eta: 800
+
+#
+save_model: true
+save_on_epochs: [10, 100, 250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000, 3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000]
+word_dictionary_path: /home/ty367/federated/utils/50k_word_dictionary.pt
+
+report_train_loss: false
+report_test_loss: true
+track_distance: false
+output_examples: true
+log_interval: 10
+local_test_perc: 10
+
+
+recreate_dataset: false
+resumed_model: model_text_Sep.29_15.54.52/model_last.pt.tar.epoch_5000
+
+scale_weights: 100
+
+diff_privacy: false
+s_norm: 8
+sigma: 0.001
+
+# configs for the NLP model
+emsize: 200
+nhid: 200
+nlayers: 2
+dropout: 0.2
+tied: true
+bptt: 64
+clip: 0.25
+seed: 1
+data_folder: /scratch/datasets
+#data_folder1: /home/ty367/federated/data
+####  /scratch/datasets  /home/ty367/federated/data

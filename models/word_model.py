@@ -46,16 +46,22 @@ class RNNModel(SimpleNet):
         self.decoder.weight.data.uniform_(-initrange, initrange)
 
     def forward(self, input, hidden):
+        ######### for multi-gpu
+#         hidden = tuple([h.permute(1, 0, 2).contiguous() for h in hidden])
         emb = self.drop(self.encoder(input))
+        ######### for multi-gpu
+        self.rnn.flatten_parameters()
+        
         output, hidden = self.rnn(emb, hidden)
         output = self.drop(output)
         decoded = self.decoder(output.view(output.size(0)*output.size(1), output.size(2)))
-        return decoded.view(output.size(0), output.size(1), decoded.size(1)), hidden
+#         hidden = tuple([h.permute(1, 0, 2).contiguous() for h in hidden])
+        return decoded.view(output.size(0), output.size(1), decoded.size(1)), hidden    
 
     def init_hidden(self, bsz):
         weight = next(self.parameters()).data
         if self.rnn_type == 'LSTM':
-            return (Variable(weight.new(self.nlayers, bsz, self.nhid).zero_()),
-                    Variable(weight.new(self.nlayers, bsz, self.nhid).zero_()))
+            return (weight.new(self.nlayers, bsz, self.nhid).zero_(),
+                    weight.new(self.nlayers, bsz, self.nhid).zero_())
         else:
             return Variable(weight.new(self.nlayers, bsz, self.nhid).zero_())
