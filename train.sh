@@ -7,6 +7,7 @@
 #SBATCH --mem=10000
 #SBATCH -t 100:00:00
 #SBATCH --partition=kilian  --gres=gpu:1
+#SBATCH --exclude=nikola-compute11
 
 
 # OPTIONAL: uncomment this if you need to copy a dataset over to scratch

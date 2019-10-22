@@ -11,6 +11,8 @@ only_eval: false
 freeze_base: false
 partial_test: 10
 multi_gpu: false
+ewc: true
+lamb: 5000
 
 # FedLearning params, 80000
 no_models: 100
@@ -34,6 +36,7 @@ local_test_perc: 10
 
 recreate_dataset: false
 resumed_model: model_text_Sep.29_15.54.52/model_last.pt.tar.epoch_5000
+resumed_fisher: /home/ty367/federated/data/fisher.pt
 
 scale_weights: 100
 

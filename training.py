@@ -188,10 +188,10 @@ def test_local(helper, train_data_sets, target_model):
         Test_local_Correct.append(local_correct)
         Test_local_Total_test_words.append(local_total_test_wors)
         Test_local_Acc.append(local_acc)
-    np.save('/home/ty367/federated/data/Test_local_Loss.npy',Test_local_Loss) 
-    np.save('/home/ty367/federated/data/Test_local_Correct.npy',Test_local_Correct) 
-    np.save('/home/ty367/federated/data/Test_local_Total_test_words.npy',Test_local_Total_test_words) 
-    np.save('/home/ty367/federated/data/Test_local_Acc.npy',Test_local_Acc) 
+    np.save('/home/ty367/federated/data/diff_Test_local_Loss.npy',Test_local_Loss) 
+    np.save('/home/ty367/federated/data/diff_Test_local_Correct.npy',Test_local_Correct) 
+    np.save('/home/ty367/federated/data/diff_Test_local_Total_test_words.npy',Test_local_Total_test_words) 
+    np.save('/home/ty367/federated/data/diff_Test_local_Acc.npy',Test_local_Acc) 
         
 def test(helper, data_source,
          model, is_poison=False, visualize=True):
@@ -305,6 +305,7 @@ if __name__ == '__main__':
         helper.writer = wr
         table = create_table(helper.params)        
         helper.writer.add_text('Model Params', table)
+        print(table)
 
     if not helper.random:
         helper.fix_random()
@@ -337,7 +338,7 @@ if __name__ == '__main__':
             helper.average_shrink_models(target_model=helper.target_model,
                                          weight_accumulator=weight_accumulator, epoch=epoch)
             # del weight_accumulator
-            if epoch%100==0:
+            if epoch in helper.params['save_on_epochs'] or (epoch+1)%1000==0:
                 t = time.time()
                 logger.info(f'testing global model at epoch: {epoch}')
                 epoch_loss, epoch_acc = test(helper=helper, data_source=helper.test_data,
@@ -345,8 +346,9 @@ if __name__ == '__main__':
                 Test_Loss.append(epoch_loss)
                 Test_Acc.append(epoch_acc)
                 logger.info(f'time spent on testing: {time.time() - t}')
-
-            helper.save_model(epoch=epoch, val_loss=epoch_loss)
+                
+                helper.save_model(epoch=epoch, val_loss=epoch_loss)
+                
             logger.info(f'Done in {time.time()-start_time} sec.')
         logger.info(f"All Test_Loss during training: {Test_Loss}, All Test_Acc during training: {Test_Acc}.")
     

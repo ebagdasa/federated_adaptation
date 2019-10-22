@@ -29,10 +29,65 @@ import numpy as np
 import random
 from utils.utils import *
 from utils.text_load import *
+from copy import deepcopy
+
 
 criterion = torch.nn.CrossEntropyLoss()
 
-def train(helper, epoch, train_data_sets, local_model, target_model, last_weight_accumulator):
+
+########################################################################################################################
+def fisher_matrix_diag(train_data_sets, target_model, criterion):
+    model = target_model
+    # Init
+    fisher={}
+    for n,p in model.named_parameters():
+        fisher[n]=0*p.data
+    # Compute
+    model.train()
+    start_time = time.time()
+    for model_id in range(len(train_data_sets)):
+        current_data_model, train_data_all = train_data_sets[model_id]
+        ntokens = len(helper.corpus.dictionary)
+        hidden = model.init_hidden(helper.batch_size)
+        trunk = len(train_data_all)//100*(100-helper.local_test_perc)
+        train_data = train_data_all[:trunk]
+        data_iterator = range(0, train_data.size(0) - 1, helper.bptt)
+        for batch_id, batch in enumerate(data_iterator):
+            data, targets = helper.get_batch(train_data, batch,
+                                              evaluation=False)
+            # Forward and backward
+            model.zero_grad()
+            hidden = tuple([each.data for each in hidden])
+            output, hidden = model(data, hidden)
+            loss = criterion(output.view(-1, ntokens), targets)
+            loss.backward()
+            # Get gradients
+            for n,p in model.named_parameters():
+                if p.grad is not None:
+                    fisher[n]+=len(data)*p.grad.data.pow(2)
+    # Mean
+    for n,_ in model.named_parameters():
+        fisher[n]=fisher[n]/train_data.size(0)
+        fisher[n]=torch.autograd.Variable(fisher[n],requires_grad=False)
+    print('time spent on fisher:',time.time()-start_time)
+    return fisher
+
+def criterion1(global_model, model, fisher, output, targets, criterion, lamb=5000):
+    model_old = deepcopy(global_model)
+    model_old.eval()
+    for param in model_old.parameters():# Freeze the weights
+        param.requires_grad = False
+    # Regularization for all previous tasks
+    loss_reg=0
+    for (name,param),(_,param_old) in zip(model.named_parameters(),model_old.named_parameters()):
+        loss_reg+=torch.sum(fisher[name]*(param_old-param).pow(2))/2
+    return criterion(output, targets)+lamb*loss_reg
+
+    
+########################################################################################################################
+
+
+def train(fisher, helper, epoch, train_data_sets, local_model, target_model, last_weight_accumulator):    
     Test_Acc_Local = list()
     Test_Acc_Global = list()
     for model_id in tqdm(range(helper.no_models)):
@@ -69,7 +124,7 @@ def train(helper, epoch, train_data_sets, local_model, target_model, last_weight
             test_data = train_data_all[trunk:]
         else:
             _, (current_data_model, train_data) = train_data_sets[model_id]
-            
+        
         for internal_epoch in range(1, helper.retrain_no_times + 1):
             model.train()
             start_time = time.time()
@@ -85,14 +140,16 @@ def train(helper, epoch, train_data_sets, local_model, target_model, last_weight
                 optimizer.zero_grad()
                 data, targets = helper.get_batch(train_data, batch,
                                                   evaluation=False)
-                
                 if helper.data_type == 'text':
 #                     hidden = helper.repackage_hidden(hidden)
                     # Creating new variables for the hidden state, otherwise we'd backprop
                     # through the entire training history.
                     hidden = tuple([each.data for each in hidden])
                     output, hidden = model(data, hidden)
-                    loss = criterion(output.view(-1, ntokens), targets)
+                    if helper.ewc:
+                        loss = criterion1(target_model, model, fisher, output.view(-1, ntokens), targets, criterion, lamb=helper.lamb)
+                    else:
+                        loss = criterion(output.view(-1, ntokens), targets)
                 else:
                     output = model(data)
                     loss = nn.functional.cross_entropy(output, targets)
@@ -130,8 +187,11 @@ def train(helper, epoch, train_data_sets, local_model, target_model, last_weight
                                      model=model, is_poison=False, visualize=True)
         Test_Acc_Global.append(epoch_acc)
         logger.info(f'time spent on testing: {time.time() - t}')
+    logger.info(f'Test_Acc_Local: {Test_Acc_Local}')
+    logger.info(f'Test_Acc_Global: {Test_Acc_Global}')
     savedir1 = '/home/ty367/federated/data/'
-    savedir2 = str(helper.lr)+str(freeze_base)+str(helper.freeze_base)+str(helper.params['current_time'])
+    savedir2 = str(helper.lr)+'_freeze_base_'+str(helper.freeze_base)+'_ewc_'+str(helper.ewc)+str(helper.params['current_time'])
+    logger.info(f'stats: {savedir2}')
     np.save(savedir1+'Test_Acc_Local_'+savedir2+'.npy',Test_Acc_Local)
     np.save(savedir1+'Test_Acc_Global_'+savedir2+'.npy',Test_Acc_Global)
         
@@ -227,21 +287,6 @@ def test(helper, data_source,
                 pred = output_flat.data.max(1)[1]
                 correct += pred.eq(targets.data).sum().to(dtype=torch.float)
                 total_test_words += targets.data.shape[0]
-
-#                 if batch_id == random_print_output_batch * helper.params['bptt'] and \
-#                         helper.params['output_examples'] and epoch % 5 == 0:
-#                     expected_sentence = helper.get_sentence(targets.data.view_as(data)[:, 0])
-#                     expected_sentence = f'*EXPECTED*: {expected_sentence}'
-#                     predicted_sentence = helper.get_sentence(pred.view_as(data)[:, 0])
-#                     predicted_sentence = f'*PREDICTED*: {predicted_sentence}'
-#                     score = 100. * pred.eq(targets.data).sum() / targets.data.shape[0]
-#                     logger.info(expected_sentence)
-#                     logger.info(predicted_sentence)
-
-#                     logger.info(f"<h2>Epoch: {epoch}_{helper.params['current_time']}</h2>"
-#                              f"<p>{expected_sentence.replace('<','&lt;').replace('>', '&gt;')}"
-#                              f"</p><p>{predicted_sentence.replace('<','&lt;').replace('>', '&gt;')}</p>"
-#                              f"<p>Accuracy: {score} ")
             else:
                 output = model(data)
                 total_loss += nn.functional.cross_entropy(output, targets,
@@ -316,6 +361,7 @@ if __name__ == '__main__':
         helper.writer = wr
         table = create_table(helper.params)        
         helper.writer.add_text('Model Params', table)
+        print(table)
 
     if not helper.random:
         helper.fix_random()
@@ -332,14 +378,22 @@ if __name__ == '__main__':
         dist_list = list()
         Test_Loss = list()
         Test_Acc = list()
-        
+        if helper.ewc:
+            if not os.path.exists(helper.resumed_fisher):
+                fisher = fisher_matrix_diag([(pos, helper.train_data[pos]) for pos in participant_ids[1:]], helper.target_model, criterion)
+                torch.save(fisher, helper.resumed_fisher)
+            else:
+                fisher = torch.load(helper.resumed_fisher)
+        else:
+            fisher = None
         for epoch in range(helper.start_epoch, helper.params['epochs'] + 1):
             start_time = time.time()
 
             subset_data_chunks = random.sample(participant_ids[1:], helper.no_models)
             logger.info(f'Selected models: {subset_data_chunks}')
             t = time.time()
-            train(helper=helper, epoch=epoch, train_data_sets=[(pos, helper.train_data[pos]) for pos in subset_data_chunks],
+            
+            train(fisher=fisher, helper=helper, epoch=epoch, train_data_sets=[(pos, helper.train_data[pos]) for pos in subset_data_chunks],
                                        local_model=helper.local_model, target_model=helper.target_model,
                                         last_weight_accumulator=weight_accumulator)
             logger.info(f'time spent on training: {time.time() - t}')
