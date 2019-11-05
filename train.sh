@@ -7,7 +7,6 @@
 #SBATCH --mem=10000
 #SBATCH -t 100:00:00
 #SBATCH --partition=kilian  --gres=gpu:1
-#SBATCH --exclude=nikola-compute11
 
 
 # OPTIONAL: uncomment this if you need to copy a dataset over to scratch
@@ -18,10 +17,10 @@
 #    unzip shard_by_author.zip
 # fi
 
-# cp  /home/ty367/federated/data/corpus_80000.pt.tar /scratch/datasets/corpus_80000.pt.tar
+cp  /home/ty367/federated/data/corpus_80000.pt.tar /scratch/datasets/corpus_80000.pt.tar
 if [ ! -d /scratch/datasets/corpus_80000.pt.tar ]; then
    cp  /home/ty367/federated/data/corpus_80000.pt.tar /scratch/datasets/corpus_80000.pt.tar
 fi
 
-# python training.py --name image
+# python training1.py --name image
 python /home/ty367/federated/training1.py --name text --params /home/ty367/federated/utils/words1.yaml

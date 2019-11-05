@@ -51,6 +51,9 @@ class Helper:
         self.ewc = self.params.get('ewc', False)
         self.lamb = self.params.get('lamb', 5000)
         self.resumed_fisher = self.params.get('resumed_fisher', False)
+        self.kd = self.params.get('kd', False)
+        self.alpha = self.params.get('alpha', 0.95)
+        self.temperature = self.params.get('temperature', 6)
         
         # LOGGING
         self.log = self.params.get('log', True)
@@ -273,7 +276,9 @@ class Helper:
         for name, data in target_model.state_dict().items():
             if self.params.get('tied', False) and name == 'decoder.weight':
                 continue
-
+            if data.dtype != torch.float32:
+                continue
+                
             update_per_layer = weight_accumulator[name] * \
                                (self.eta / self.number_of_total_participants)
 

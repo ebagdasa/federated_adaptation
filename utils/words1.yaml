@@ -2,8 +2,8 @@ data_type: text
 
 # Training params
 test_batch_size: 10
-lr: 0.1
-####lr:0.1, 1, 10, 20, 40
+lr: 10
+####lr:0.1, 1, 10
 momentum: 0
 decay: 0
 batch_size: 20
@@ -11,8 +11,13 @@ only_eval: false
 freeze_base: false
 partial_test: 10
 multi_gpu: false
-ewc: true
+ewc: false
 lamb: 5000
+
+kd: true
+alpha: 0.95
+temperature: 6
+
 
 # FedLearning params, 80000
 no_models: 100
@@ -22,7 +27,7 @@ number_of_total_participants: 80000
 eta: 800
 
 #
-save_model: true
+save_model: false
 save_on_epochs: [10, 100, 250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000, 3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000]
 word_dictionary_path: /home/ty367/federated/utils/50k_word_dictionary.pt
 
@@ -35,14 +40,18 @@ local_test_perc: 10
 
 
 recreate_dataset: false
-resumed_model: model_text_Sep.29_15.54.52/model_last.pt.tar.epoch_5000
-resumed_fisher: /home/ty367/federated/data/fisher.pt
+resumed_model: model_text_Sep.29_15.54.52/model_last.pt.tar.best
+###Private: model_text_Oct.15_15.55.39/model_last.pt.tar.best
+###Non Private: model_text_Sep.29_15.54.52/model_last.pt.tar.epoch_5000
+resumed_fisher: /home/ty367/federated/data/private_fisher.pt
+###Private: /home/ty367/federated/data/private_fisher.pt
+###Non Private: /home/ty367/federated/data/fisher.pt
 
 scale_weights: 100
 
 diff_privacy: false
-s_norm: 8
-sigma: 0.001
+s_norm: 15
+sigma: 0.01
 
 # configs for the NLP model
 emsize: 200

@@ -63,23 +63,35 @@ class ImageHelper(Helper):
                                               transform=transform_train)
 
         self.test_dataset = datasets.CIFAR10('./data', train=False, transform=transform_test)
-
-        if self.sampling_dirichlet:
-            ## sample indices for participants using Dirichlet distribution
-            indices_per_participant = self.sample_dirichlet_train_data(
-                self.params['number_of_total_participants'],
-                alpha=self.params['dirichlet_alpha'])
-            train_loaders = [(pos, self.get_train(indices)) for pos, indices in
-                             indices_per_participant.items()]
+        if self.recreate_dataset:
+            if self.sampling_dirichlet:
+                ## sample indices for participants using Dirichlet distribution
+                indices_per_participant = self.sample_dirichlet_train_data(
+                    self.params['number_of_total_participants'],
+                    alpha=self.params['dirichlet_alpha'])
+                train_loaders = [(pos, self.get_train(indices)) for pos, indices in
+                                 indices_per_participant.items()]
+            else:
+                ## sample indices for participants that are equally
+                # splitted to 500 images per participant
+                all_range_train = list(range(len(self.train_dataset)))
+                random.shuffle(all_range_train)
+                train_loaders = [(pos, self.get_train_old(all_range_train, pos))
+                                 for pos in range(self.params['number_of_total_participants'])]
+                all_range_test = list(range(len(self.test_dataset)))
+                random.shuffle(all_range_test)
+                test_local_loaders = [(pos, self.get_test_old(all_range_test, pos))
+                                 for pos in range(self.params['number_of_total_participants'])]
+            self.train_data = train_loaders
+            self.test_data = self.get_test()
+            self.test_local_data = test_local_loaders            
+            torch.save(self.train_data, './data/CIFAR_train_data.pt.tar')
+            torch.save(self.test_data, './data/CIFAR_test_data.pt.tar')
+            torch.save(self.test_local_data, './data/CIFAR_test_local_data.pt.tar')
         else:
-            ## sample indices for participants that are equally
-            # splitted to 500 images per participant
-            all_range = list(range(len(self.train_dataset)))
-            random.shuffle(all_range)
-            train_loaders = [(pos, self.get_train_old(all_range, pos))
-                             for pos in range(self.params['number_of_total_participants'])]
-        self.train_data = train_loaders
-        self.test_data = self.get_test()
+            self.train_data = torch.load('./data/CIFAR_train_data.pt.tar')
+            self.test_data = torch.load('./data/CIFAR_test_data.pt.tar')
+            self.test_local_data = torch.load('./data/CIFAR_test_local_data.pt.tar')
 
 
     def get_test(self):
@@ -100,6 +112,7 @@ class ImageHelper(Helper):
         """
         train_loader = torch.utils.data.DataLoader(self.train_dataset,
                                                    batch_size=self.params['batch_size'],
+                                                   shuffle=True,
                                                    sampler=torch.utils.data.sampler.SubsetRandomSampler(
                                                        indices))
         return train_loader
@@ -119,10 +132,26 @@ class ImageHelper(Helper):
         data_len = int(len(self.train_dataset) / self.params['number_of_total_participants'])
         sub_indices = all_range[model_no * data_len: (model_no + 1) * data_len]
         train_loader = torch.utils.data.DataLoader(self.train_dataset,
-                                           batch_size=self.params['batch_size'],
-                                           sampler=torch.utils.data.sampler.SubsetRandomSampler(
-                                               sub_indices))
+                                                   batch_size=self.params['batch_size'],
+                                                   sampler=torch.utils.data.sampler.SubsetRandomSampler(
+                                                       sub_indices))
         return train_loader
+    
+    def get_test_old(self, all_range, model_no):
+        """
+        This method equally splits the dataset.
+        :param params:
+        :param all_range:
+        :param model_no:
+        :return:
+        """
+        data_len = int(len(self.test_dataset) / self.params['number_of_total_participants'])
+        sub_indices = all_range[model_no * data_len: (model_no + 1) * data_len]
+        test_loader = torch.utils.data.DataLoader(self.test_dataset,
+                                                   batch_size=self.params['test_batch_size'],
+                                                   sampler=torch.utils.data.sampler.SubsetRandomSampler(
+                                                       sub_indices))
+        return test_loader
 
 
     def get_batch(self, train_data, bptt, evaluation=False):

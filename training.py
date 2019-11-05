@@ -115,25 +115,7 @@ def train(helper, epoch, train_data_sets, local_model, target_model, last_weight
                 else:
                     optimizer.step()
 
-                total_loss += loss.item()
-
-            if helper.report_train_loss:
-                cur_loss = total_loss / (batch_num+1)
-                elapsed = time.time() - start_time
-                logger.info('model {} | epoch {:3d} | internal_epoch {:3d} '
-                            '| lr {:02.2f} | ms/batch {:5.2f} | '
-                            'loss {:5.2f} | batch_perplexity {:8.2f}'
-                                    .format(model_id, epoch, internal_epoch,
-                                    helper.params['lr'],
-                                    elapsed * 1000 / helper.log_interval,
-                                    cur_loss,
-                                    math.exp(cur_loss) if cur_loss < 30 else -1.))
-            if helper.report_test_loss and epoch%1000==0:
-                local_loss, local_correct, local_total_test_wors, local_acc = eval_(helper, test_data, model)
-                logger.info('___Local_Test {}, Average loss: {:.4f}, '
-                    'Accuracy: {}/{} ({:.4f}%) | per_perplexity {:8.2f}'
-                    .format(model.name, local_loss, local_correct, local_total_test_wors, local_acc, math.exp(local_loss) if local_loss < 30 else -1.))
-            
+                total_loss += loss.item()            
         for name, data in model.state_dict().items():
             #### don't scale tied weights:
             if helper.params.get('tied', False) and name == 'decoder.weight' or '__'in name:
@@ -147,28 +129,41 @@ def eval_(helper, data_source, model, is_poison=False):
     total_loss = 0.0
     correct = 0.0
     total_test_words = 0.0
-    data_iterator = range(0, data_source.size(0)-1, helper.params['bptt'])
-    dataset_size = len(data_source)
+    if helper.data_type == 'text':
+        data_iterator = range(0, data_source.size(0)-1, helper.params['bptt'])
+        dataset_size = len(data_source)
+    else:
+        dataset_size = len(data_source.dataset)
+        data_iterator = data_source
     
     with torch.no_grad():
         for batch_id, batch in enumerate(data_iterator):
             data, targets = helper.get_batch(data_source, batch, evaluation=True)
-            hidden = model.init_hidden(data.size(-1))
-            output, hidden = model(data, hidden)
-            output_flat = output.view(-1, helper.n_tokens)
-            total_loss += len(data) * criterion(output_flat, targets).data
-            hidden = helper.repackage_hidden(hidden)
-            pred = output_flat.data.max(1)[1]
-            correct += pred.eq(targets.data).sum().to(dtype=torch.float)
-            total_test_words += targets.data.shape[0]
-        acc = 100.0 * (correct / total_test_words)
-        total_l = total_loss.item() / (dataset_size-1)
-    return total_l, correct.item(), total_test_words, acc.item()
+            if helper.data_type == 'text':
+                hidden = model.init_hidden(data.size(-1))
+                output, hidden = model(data, hidden)
+                output_flat = output.view(-1, helper.n_tokens)
+                total_loss += len(data) * criterion(output_flat, targets).data
+                hidden = helper.repackage_hidden(hidden)
+                pred = output_flat.data.max(1)[1]
+                correct += pred.eq(targets.data).sum().to(dtype=torch.float).item()
+                total_test_words += targets.data.shape[0]
+            else:
+                output = model(data)
+                total_loss += nn.functional.cross_entropy(output, targets,
+                                                  reduction='sum').item() # sum up batch loss
+                pred = output.data.max(1)[1]  # get the index of the max log-probability
+                correct += pred.eq(targets.data.view_as(pred)).cpu().sum().item()
+        if helper.data_type == 'text':
+            acc = 100.0 * (correct / total_test_words)
+            total_l = total_loss.item() / (dataset_size-1)
+            acc = acc.item()
+        else:
+            acc = 100.0 * (float(correct) / float(dataset_size))
+            total_l = total_loss / dataset_size
+    return total_l, correct, total_test_words, acc
 
 def test_local(helper, train_data_sets, target_model):
-    Test_local_Loss = list()
-    Test_local_Correct = list()
-    Test_local_Total_test_words = list()
     Test_local_Acc = list()
     for model_id in range(len(train_data_sets)):
         model = target_model
@@ -181,17 +176,11 @@ def test_local(helper, train_data_sets, target_model):
             train_data = train_data_all[:trunk]
             test_data = train_data_all[trunk:]
         else:
-            _, (current_data_model, train_data) = train_data_sets[model_id]
+            _, (current_data_model, test_data) = train_data_sets[model_id]
         
         local_loss, local_correct, local_total_test_wors, local_acc = eval_(helper, test_data, model)
-        Test_local_Loss.append(local_loss)
-        Test_local_Correct.append(local_correct)
-        Test_local_Total_test_words.append(local_total_test_wors)
         Test_local_Acc.append(local_acc)
-    np.save('/home/ty367/federated/data/diff_Test_local_Loss.npy',Test_local_Loss) 
-    np.save('/home/ty367/federated/data/diff_Test_local_Correct.npy',Test_local_Correct) 
-    np.save('/home/ty367/federated/data/diff_Test_local_Total_test_words.npy',Test_local_Total_test_words) 
-    np.save('/home/ty367/federated/data/diff_Test_local_Acc.npy',Test_local_Acc) 
+    np.save('/home/ty367/federated/data/CIFAR_Test_local_Acc.npy',Test_local_Acc) 
         
 def test(helper, data_source,
          model, is_poison=False, visualize=True):
@@ -221,20 +210,6 @@ def test(helper, data_source,
                 correct += pred.eq(targets.data).sum().to(dtype=torch.float)
                 total_test_words += targets.data.shape[0]
 
-#                 if batch_id == random_print_output_batch * helper.params['bptt'] and \
-#                         helper.params['output_examples'] and epoch % 5 == 0:
-#                     expected_sentence = helper.get_sentence(targets.data.view_as(data)[:, 0])
-#                     expected_sentence = f'*EXPECTED*: {expected_sentence}'
-#                     predicted_sentence = helper.get_sentence(pred.view_as(data)[:, 0])
-#                     predicted_sentence = f'*PREDICTED*: {predicted_sentence}'
-#                     score = 100. * pred.eq(targets.data).sum() / targets.data.shape[0]
-#                     logger.info(expected_sentence)
-#                     logger.info(predicted_sentence)
-
-#                     logger.info(f"<h2>Epoch: {epoch}_{helper.params['current_time']}</h2>"
-#                              f"<p>{expected_sentence.replace('<','&lt;').replace('>', '&gt;')}"
-#                              f"</p><p>{predicted_sentence.replace('<','&lt;').replace('>', '&gt;')}</p>"
-#                              f"<p>Accuracy: {score} ")
             else:
                 output = model(data)
                 total_loss += nn.functional.cross_entropy(output, targets,
@@ -318,6 +293,7 @@ if __name__ == '__main__':
     # save parameters:
     with open(f'{helper.folder_path}/params.yaml', 'w') as f:
         yaml.dump(helper.params, f)
+
     if not helper.only_eval:
         dist_list = list()
         Test_Loss = list()
@@ -353,7 +329,11 @@ if __name__ == '__main__':
         logger.info(f"All Test_Loss during training: {Test_Loss}, All Test_Acc during training: {Test_Acc}.")
     
     logger.info(f"start test all local models")
-    test_local(helper=helper, train_data_sets=[(pos, helper.train_data[pos]) for pos in
+    if helper.data_type == 'text':
+        test_local(helper=helper, train_data_sets=[(pos, helper.train_data[pos]) for pos in
+                                                    participant_ids[1:]], target_model=helper.target_model)
+    else:
+        test_local(helper=helper, train_data_sets=[(pos, helper.test_local_data[pos]) for pos in
                                                     participant_ids[1:]], target_model=helper.target_model)
     logger.info(f"finish test all local models, start test global model")
     final_loss, final_acc = test(helper=helper, data_source=helper.test_data,
