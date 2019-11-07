@@ -80,7 +80,7 @@ class Helper:
         ### TEXT PARAMS
         self.bptt = self.params.get('bptt', False)
         self.recreate_dataset = self.params.get('recreate_dataset', False)
-
+        self.aggregation_type = self.params.get('aggregation_type', 'averaging')
 
         if self.log:
             try:
@@ -286,6 +286,26 @@ class Helper:
                 update_per_layer.add_(self.dp_noise(data, self.params['sigma']))
 
             data.add_(update_per_layer)
+
+        return True
+
+    def median_aggregation(self, weight_accumulator, target_model, epoch):
+        """
+        Coordinate-wise median
+        :param weight_accumulator:
+        :param target_model:
+        :param epoch:
+        :return:
+        """
+        for name, data in target_model.state_dict().items():
+            if self.params.get('tied', False) and name == 'decoder.weight':
+                continue
+            if data.dtype != torch.float32:
+                continue
+
+            update_per_layer = weight_accumulator[name].median(dim=0).values
+
+            data.add_(update_per_layer.cuda())
 
         return True
 
