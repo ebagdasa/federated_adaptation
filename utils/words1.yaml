@@ -2,7 +2,7 @@ data_type: text
 
 # Training params
 test_batch_size: 10
-lr: 10
+lr: 0.1
 ####lr:0.1, 1, 10
 momentum: 0
 decay: 0
@@ -14,13 +14,13 @@ multi_gpu: false
 ewc: false
 lamb: 5000
 
-kd: true
+kd: false
 alpha: 0.95
 temperature: 6
 
 
 # FedLearning params, 80000
-no_models: 100
+no_models: 5
 epochs: 5000
 retrain_no_times: 100
 number_of_total_participants: 80000
@@ -40,7 +40,7 @@ local_test_perc: 10
 
 
 recreate_dataset: false
-resumed_model: model_text_Sep.29_15.54.52/model_last.pt.tar.best
+resumed_model: model_text_Sep.29_15.54.52/model_last.pt.tar.epoch_5000
 ###Private: model_text_Oct.15_15.55.39/model_last.pt.tar.best
 ###Non Private: model_text_Sep.29_15.54.52/model_last.pt.tar.epoch_5000
 resumed_fisher: /home/ty367/federated/data/private_fisher.pt

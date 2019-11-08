@@ -197,6 +197,24 @@ def train(fisher, helper, epoch, train_data_sets, local_model, target_model, las
                         loss = loss_fn_kd(helper, output.view(-1, ntokens), targets, teacher_outputs.view(-1, ntokens))
                     else:
                         loss = criterion(output.view(-1, ntokens), targets)
+                    ################### test procedure
+                    if internal_epoch == helper.retrain_no_times:
+                        original_sentence = helper.get_sentence(data.data[:, 0])
+                        original_sentence = f'*ORIGINAL*: {original_sentence}'
+                        pred = output.view(-1, ntokens).data.max(1)[1]
+                        expected_sentence = helper.get_sentence(targets.data.view_as(data)[:, 0])
+                        expected_sentence = f'*EXPECTED*: {expected_sentence}'
+                        predicted_sentence = helper.get_sentence(pred.view_as(data)[:, 0])
+                        predicted_sentence = f'*PREDICTED*: {predicted_sentence}'
+                        score = 100. * pred.eq(targets.data).sum() / targets.data.shape[0]
+                        logger.info(expected_sentence)
+                        logger.info(predicted_sentence)
+                        logger.info(f"<h2>model_id: {model_id}_{helper.params['current_time']}</h2>"
+                                    f"<p>{original_sentence.replace('<','&lt;').replace('>', '&gt;')}"
+                                 f"<p>{expected_sentence.replace('<','&lt;').replace('>', '&gt;')}"
+                                 f"</p><p>{predicted_sentence.replace('<','&lt;').replace('>', '&gt;')}</p>"
+                                 f"<p>Accuracy: {score} ")
+                    ################### test procedure
                 else:
                     output = model(data)
                     if helper.ewc:
@@ -236,10 +254,10 @@ def train(fisher, helper, epoch, train_data_sets, local_model, target_model, las
         logger.info(f'testing model on local testset at model_id: {model_id}')
         local_loss, local_correct, local_total_test_wors, local_acc = eval_(helper, test_data, model)
         Test_Acc_Local.append(local_acc)
-        logger.info(f'testing model on global testset at model_id: {model_id}')
-        epoch_loss, epoch_acc = test(helper=helper, data_source=helper.test_data,
-                                     model=model, is_poison=False, visualize=True)
-        Test_Acc_Global.append(epoch_acc)
+#         logger.info(f'testing model on global testset at model_id: {model_id}')
+#         epoch_loss, epoch_acc = test(helper=helper, data_source=helper.test_data,
+#                                      model=model, is_poison=False, visualize=True)
+#         Test_Acc_Global.append(epoch_acc)
         logger.info(f'time spent on testing: {time.time() - t}')
     logger.info(f'Test_Acc_Local: {Test_Acc_Local}')
     logger.info(f'Test_Acc_Global: {Test_Acc_Global}')
@@ -274,6 +292,22 @@ def eval_(helper, data_source, model, is_poison=False):
                 pred = output_flat.data.max(1)[1]
                 correct += pred.eq(targets.data).sum().to(dtype=torch.float).item()
                 total_test_words += targets.data.shape[0]
+                ################### test procedure
+                logger.info('this is sentences for local testset')
+                original_sentence = helper.get_sentence(data.data[:, 0])
+                original_sentence = f'*ORIGINAL*: {original_sentence}'
+                expected_sentence = helper.get_sentence(targets.data.view_as(data)[:, 0])
+                expected_sentence = f'*EXPECTED*: {expected_sentence}'
+                predicted_sentence = helper.get_sentence(pred.view_as(data)[:, 0])
+                predicted_sentence = f'*PREDICTED*: {predicted_sentence}'
+                score = 100. * pred.eq(targets.data).sum() / targets.data.shape[0]
+#                 logger.info(expected_sentence)
+#                 logger.info(predicted_sentence)
+                logger.info(f"<p>{original_sentence.replace('<','&lt;').replace('>', '&gt;')}"
+                            f"<p>{expected_sentence.replace('<','&lt;').replace('>', '&gt;')}"
+                         f"</p><p>{predicted_sentence.replace('<','&lt;').replace('>', '&gt;')}</p>"
+                         f"<p>Accuracy: {score} ")
+                ################### test procedure
             else:
                 output = model(data)
                 total_loss += nn.functional.cross_entropy(output, targets,
@@ -448,7 +482,8 @@ if __name__ == '__main__':
         for epoch in range(0,1):
             start_time = time.time()
 
-            subset_data_chunks = random.sample(participant_ids[1:], helper.no_models)
+#             subset_data_chunks = random.sample(participant_ids[1:], helper.no_models)
+            subset_data_chunks = [4,10,20,30,50]
             logger.info(f'Selected models: {subset_data_chunks}')
             t = time.time()
             
@@ -456,7 +491,7 @@ if __name__ == '__main__':
                                        local_model=helper.local_model, target_model=helper.target_model,
                                         last_weight_accumulator=weight_accumulator)
             logger.info(f'time spent on training: {time.time() - t}')
-
+    assert 1==2
     logger.info(f"start test global accuracy over all local participants")
     if helper.data_type == 'text':
         test_local(helper=helper, train_data_sets=[(pos, helper.train_data[pos]) for pos in
