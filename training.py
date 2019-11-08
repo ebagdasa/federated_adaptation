@@ -42,7 +42,11 @@ def train(helper, epoch, train_data_sets, local_model, target_model, last_weight
         #### don't scale tied weights:
         if helper.params.get('tied', False) and name == 'decoder.weight' or '__'in name:
             continue
-        weight_accumulator[name] = torch.zeros_like(data)
+        if helper.aggregation_type == 'averaging':
+            weight_accumulator[name] = torch.zeros_like(data)
+        else:
+            weight_per_model = list(data.shape)
+            weight_accumulator[name] = torch.zeros([helper.no_models] + weight_per_model)
 
     ### This is for calculating distances
     target_params_variables = dict()
@@ -120,7 +124,10 @@ def train(helper, epoch, train_data_sets, local_model, target_model, last_weight
             #### don't scale tied weights:
             if helper.params.get('tied', False) and name == 'decoder.weight' or '__'in name:
                 continue
-            weight_accumulator[name].add_(data - target_model.state_dict()[name])
+            if helper.aggregation_type == 'averaging':
+                weight_accumulator[name].add_(data - target_model.state_dict()[name])
+            else:
+                weight_accumulator[name][model_id].add_(data.cpu() - target_model.state_dict()[name].cpu())
 
     return weight_accumulator
 
@@ -311,8 +318,14 @@ if __name__ == '__main__':
                                         last_weight_accumulator=weight_accumulator)
             logger.info(f'time spent on training: {time.time() - t}')
             # Average the models
-            helper.average_shrink_models(target_model=helper.target_model,
+            if helper.aggregation_type == 'averaging':
+                helper.average_shrink_models(target_model=helper.target_model,
                                          weight_accumulator=weight_accumulator, epoch=epoch)
+            elif helper.aggregation_type == 'median':
+                helper.median_aggregation(target_model=helper.target_model,
+                                         weight_accumulator=weight_accumulator, epoch=epoch)
+            else:
+                raise NotImplemented(f'Aggregation {helper.aggregation_type} not yet implemented.')
             # del weight_accumulator
             if epoch in helper.params['save_on_epochs'] or (epoch+1)%1000==0:
                 t = time.time()
