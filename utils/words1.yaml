@@ -34,7 +34,7 @@ word_dictionary_path: /home/ty367/federated/utils/50k_word_dictionary.pt
 report_train_loss: false
 report_test_loss: true
 track_distance: false
-output_examples: true
+output_examples: false
 log_interval: 10
 local_test_perc: 10
 

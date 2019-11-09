@@ -10,6 +10,7 @@ batch_size: 20
 only_eval: false
 
 # FedLearning params, 80000
+aggregation_type: averaging
 no_models: 100
 epochs: 5010
 retrain_no_times: 2
@@ -26,12 +27,13 @@ word_dictionary_path: /home/ty367/federated/utils/50k_word_dictionary.pt
 report_train_loss: false
 report_test_loss: false
 track_distance: false
-output_examples: true
+output_examples: false
 log_interval: 10
 local_test_perc: 10
 
-
+# prepare data
 recreate_dataset: false
+sampling_dirichlet: false
 
 scale_weights: 100
 
