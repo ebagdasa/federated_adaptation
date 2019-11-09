@@ -128,6 +128,7 @@ def loss_fn_kd(helper, outputs, targets, teacher_outputs):
 def train(fisher, helper, epoch, train_data_sets, local_model, target_model, last_weight_accumulator):    
     Test_Acc_Local = list()
     Test_Acc_Global = list()
+    Test_correct_class_acc_Local = np.zeros((helper.no_models,10))
     for parame in target_model.parameters():
         parame.requires_grad = False
     for model_id in tqdm(range(helper.no_models)):
@@ -249,19 +250,28 @@ def train(fisher, helper, epoch, train_data_sets, local_model, target_model, las
                 total_loss += loss.item()
 
         t = time.time()
-        logger.info(f'testing model on local testset at model_id: {model_id}')
-        local_loss, local_correct, local_total_test_wors, local_acc = eval_(helper, test_data, model)
-        Test_Acc_Local.append(local_acc)
-        logger.info(f'testing model on global testset at model_id: {model_id}')
-        epoch_loss, epoch_acc = test(helper=helper, data_source=helper.test_data,
-                                     model=model, is_poison=False, visualize=True)
+        if helper.data_type == 'text':
+            logger.info(f'testing model on local testset at model_id: {model_id}')
+            local_loss, local_correct, local_total_test_wors, local_acc = eval_(helper, test_data, model)
+            Test_Acc_Local.append(local_acc)
+            logger.info(f'testing model on global testset at model_id: {model_id}')
+            epoch_loss, epoch_acc = test(helper=helper, data_source=helper.test_data,
+                                         model=model, is_poison=False, visualize=True)
+        else:
+            logger.info(f'testing model on global testset at model_id: {model_id}')
+            epoch_loss, epoch_acc, correct_class_acc = test(helper=helper, data_source=helper.test_data,
+                                         model=model, is_poison=False, visualize=True)
+            Test_correct_class_acc_Local[model_id,:] = correct_class_acc
         Test_Acc_Global.append(epoch_acc)
         logger.info(f'time spent on testing: {time.time() - t}')
-    logger.info(f'Test_Acc_Local: {Test_Acc_Local}')
+    if helper.data_type == 'text':
+        logger.info(f'Test_Acc_Local: {Test_Acc_Local}')
+    else:
+        logger.info(f'Test_correct_class_acc_Local: {Test_correct_class_acc_Local}')
     logger.info(f'Test_Acc_Global: {Test_Acc_Global}')
-    savedir1 = '/home/ty367/federated/data/'
-    savedir2 = str(helper.data_type)+str(helper.lr)+'_freeze_base_'+str(helper.freeze_base)+'_diff_privacy_'+str(helper.diff_privacy)+'_ewc_'+str(helper.ewc)+str(helper.params['current_time'])
-    logger.info(f'stats: {savedir2}')
+#     savedir1 = '/home/ty367/federated/data/'
+#     savedir2 = str(helper.data_type)+str(helper.lr)+'_freeze_base_'+str(helper.freeze_base)+'_diff_privacy_'+str(helper.diff_privacy)+'_ewc_'+str(helper.ewc)+str(helper.params['current_time'])
+#     logger.info(f'stats: {savedir2}')
 #     np.save(savedir1+'Test_Acc_Local_'+savedir2+'.npy',Test_Acc_Local)
 #     np.save(savedir1+'Test_Acc_Global_'+savedir2+'.npy',Test_Acc_Global)
         
@@ -351,6 +361,9 @@ def test(helper, data_source,
     model.eval()
     total_loss = 0.0
     correct = 0.0
+    correct_class = np.zeros(10)
+    correct_class_acc = np.zeros(10)
+    correct_class_size = np.zeros(10)
     total_test_words = 0.0
     if helper.data_type == 'text':
         if helper.multi_gpu:
@@ -385,7 +398,10 @@ def test(helper, data_source,
                                                   reduction='sum').item() # sum up batch loss
                 pred = output.data.max(1)[1]  # get the index of the max log-probability
                 correct += pred.eq(targets.data.view_as(pred)).cpu().sum().item()
-
+                for i in range(10):
+                    class_ind = targets.data.view_as(pred).eq(torch.ones_like(pred))
+                    correct_class_size[i] += class_ind.cpu().sum().item()
+                    correct_class[i] += (pred.eq(targets.data.view_as(pred))*class_ind).cpu().sum().item()
         if helper.data_type == 'text':
             acc = 100.0 * (correct / total_test_words)
             total_l = total_loss.item() / (dataset_size-1)
@@ -397,15 +413,16 @@ def test(helper, data_source,
                         'Accuracy: {}/{} ({:.4f}%) | per_perplexity {:8.2f}'
                         .format(modelname, is_poison, total_l, correct, total_test_words, acc, math.exp(total_l) if total_l < 30 else -1.))
             acc = acc.item()
-#             total_l = total_l.item()
+            return (total_l, acc)
         else:
             acc = 100.0 * (float(correct) / float(dataset_size))
+            for i in range(10):
+                correct_class_acc[i] = 100.0 * (float(correct_class[i]) / float(correct_class_size[i]))
             total_l = total_loss / dataset_size
-
             logger.info(f'___Test {model.name} , Average loss: {total_l},  '
                         f'Accuracy: {correct}/{dataset_size} ({acc}%)')
-
-    return (total_l, acc)
+            correct_class_acc
+            return (total_l, acc, correct_class_acc)
 
 
 if __name__ == '__main__':
@@ -492,12 +509,17 @@ if __name__ == '__main__':
     if helper.data_type == 'text':
         test_local(helper=helper, train_data_sets=[(pos, helper.train_data[pos]) for pos in
                                                     participant_ids[1:]], target_model=helper.target_model)
+#     else:
+#         test_local(helper=helper, train_data_sets=[(pos, helper.test_local_data[pos]) for pos in
+#                                                     participant_ids[1:]], target_model=helper.target_model)
+        logger.info(f"start partial test over a subset of local participants")
+        final_loss, final_acc = test(helper=helper, data_source=helper.test_data,
+                                              model=helper.target_model, is_poison=False, visualize=True)
     else:
-        test_local(helper=helper, train_data_sets=[(pos, helper.test_local_data[pos]) for pos in
-                                                    participant_ids[1:]], target_model=helper.target_model)
-    logger.info(f"start partial test over a subset of local participants")
-    final_loss, final_acc = test(helper=helper, data_source=helper.test_data,
-                                          model=helper.target_model, is_poison=False, visualize=True)
+        logger.info(f"start partial test over a subset of local participants")
+        final_loss, final_acc, correct_class_acc = test(helper=helper, data_source=helper.test_data,
+                                              model=helper.target_model, is_poison=False, visualize=True)
+        logger.info(f"Final correct_class_acc of Global model: {correct_class_acc}.")
     logger.info(f"Final partial Test_Loss of Global model: {final_loss}, Final partial Test_Acc of Global model: {final_acc}.")
     logger.info(f"This run has a label: {helper.params['current_time']}. ")
     
