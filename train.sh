@@ -17,10 +17,10 @@
 #    unzip shard_by_author.zip
 # fi
 
-cp  /home/ty367/federated/data/corpus_80000.pt.tar /scratch/datasets/corpus_80000.pt.tar
-if [ ! -d /scratch/datasets/corpus_80000.pt.tar ]; then
-   cp  /home/ty367/federated/data/corpus_80000.pt.tar /scratch/datasets/corpus_80000.pt.tar
-fi
+# cp  /home/ty367/federated/data/corpus_80000.pt.tar /scratch/datasets/corpus_80000.pt.tar
+# if [ ! -d /scratch/datasets/corpus_80000.pt.tar ]; then
+#    cp  /home/ty367/federated/data/corpus_80000.pt.tar /scratch/datasets/corpus_80000.pt.tar
+# fi
 
-# python training1.py --name image
-python /home/ty367/federated/training1.py --name text --params /home/ty367/federated/utils/words1.yaml
+CUDA_VISIBLE_DEVICES=2 nohup python -u training.py --name image >log.txt 2>&1 &
+# python /home/ty367/federated/training1.py --name text --params /home/ty367/federated/utils/words1.yaml

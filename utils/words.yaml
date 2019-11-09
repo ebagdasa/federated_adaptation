@@ -34,6 +34,7 @@ local_test_perc: 10
 # prepare data
 recreate_dataset: false
 sampling_dirichlet: false
+dirichlet_alpha: 0.9
 
 scale_weights: 100
 

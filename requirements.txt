@@ -1,5 +1,10 @@
 numpy
+scipy
+matplotlib
+colorlog
+pyyaml
 torch==1.2.0
 torchvision==0.4.0
 tqdm
+scikit-learn
 tensorboard==1.14.0

@@ -187,7 +187,7 @@ def test_local(helper, train_data_sets, target_model):
         
         local_loss, local_correct, local_total_test_wors, local_acc = eval_(helper, test_data, model)
         Test_local_Acc.append(local_acc)
-    np.save('/home/ty367/federated/data/CIFAR_Test_local_Acc.npy',Test_local_Acc) 
+    np.save('/home/ty367/federated/data/CIFAR_Test_local_Acc_first_train.npy',Test_local_Acc) 
         
 def test(helper, data_source,
          model, is_poison=False, visualize=True):

@@ -66,11 +66,16 @@ class ImageHelper(Helper):
         if self.recreate_dataset:
             if self.sampling_dirichlet:
                 ## sample indices for participants using Dirichlet distribution
-                indices_per_participant = self.sample_dirichlet_train_data(
+                indices_per_participant, train_datasize = self.sample_dirichlet_data(self.train_dataset,
                     self.params['number_of_total_participants'],
                     alpha=self.params['dirichlet_alpha'])
-                train_loaders = [(pos, self.get_train(indices)) for pos, indices in
-                                 indices_per_participant.items()]
+                train_loaders = [(user, self.get_train(indices_per_participant[user])) for user in range(self.params['number_of_total_participants'])]
+                indices_per_participant_test_local, test_datasize = self.sample_dirichlet_data(self.test_dataset,
+                    self.params['number_of_total_participants'],
+                    alpha=self.params['dirichlet_alpha'])
+                self.test_local_data = [(user, self.get_train(indices_per_participant_test_local[user])) for user in range(self.params['number_of_total_participants'])]
+                torch.save(train_datasize, './data/CIFAR_train_datasize.pt')
+                torch.save(test_datasize, './data/CIFAR_test_datasize.pt')
             else:
                 ## sample indices for participants that are equally
                 # splitted to 500 images per participant
@@ -80,11 +85,10 @@ class ImageHelper(Helper):
                                  for pos in range(self.params['number_of_total_participants'])]
                 all_range_test = list(range(len(self.test_dataset)))
                 random.shuffle(all_range_test)
-                test_local_loaders = [(pos, self.get_test_old(all_range_test, pos))
+                self.test_local_data = [(pos, self.get_test_old(all_range_test, pos))
                                  for pos in range(self.params['number_of_total_participants'])]
             self.train_data = train_loaders
             self.test_data = self.get_test()
-            self.test_local_data = test_local_loaders            
             torch.save(self.train_data, './data/CIFAR_train_data.pt.tar')
             torch.save(self.test_data, './data/CIFAR_test_data.pt.tar')
             torch.save(self.test_local_data, './data/CIFAR_test_local_data.pt.tar')
@@ -112,7 +116,6 @@ class ImageHelper(Helper):
         """
         train_loader = torch.utils.data.DataLoader(self.train_dataset,
                                                    batch_size=self.params['batch_size'],
-                                                   shuffle=True,
                                                    sampler=torch.utils.data.sampler.SubsetRandomSampler(
                                                        indices))
         return train_loader
@@ -164,7 +167,7 @@ class ImageHelper(Helper):
         return data, target
 
 
-    def sample_dirichlet_train_data(self, no_participants, alpha=0.9):
+    def sample_dirichlet_data(self, dataset, no_participants, alpha=0.9):
         """
             Input: Number of participants and alpha (param for distribution)
             Output: A list of indices denoting data in CIFAR training set.
@@ -174,27 +177,36 @@ class ImageHelper(Helper):
         """
 
         cifar_classes = {}
-        for ind, x in enumerate(self.train_dataset):
+        for ind, x in enumerate(dataset):
             _, label = x
-            if ind in self.params['poison_images'] or ind in self.params['poison_images_test']:
-                continue
+#             if ind in self.params['poison_images'] or ind in self.params['poison_images_test']:
+#                 continue
             if label in cifar_classes:
                 cifar_classes[label].append(ind)
             else:
                 cifar_classes[label] = [ind]
-        class_size = len(cifar_classes[0])
+
         per_participant_list = defaultdict(list)
         no_classes = len(cifar_classes.keys())
-
+        class_size = len(cifar_classes[0])
+        datasize = {}
         for n in range(no_classes):
             random.shuffle(cifar_classes[n])
             sampled_probabilities = class_size * np.random.dirichlet(
                 np.array(no_participants * [alpha]))
             for user in range(no_participants):
                 no_imgs = int(round(sampled_probabilities[user]))
+                datasize[user, n] = no_imgs
                 sampled_list = cifar_classes[n][:min(len(cifar_classes[n]), no_imgs)]
                 per_participant_list[user].extend(sampled_list)
                 cifar_classes[n] = cifar_classes[n][min(len(cifar_classes[n]), no_imgs):]
 
-        return per_participant_list
+#         data_len = int(len(self.train_dataset) / self.params['number_of_total_participants'])
+#         for user in range(no_participants):
+#             for n in range(no_classes):
+#                 class_size = len(cifar_classes[n])
+#                 sampled_probabilities = class_size * np.random.dirichlet(np.array(no_participants * [alpha]))
+#                 no_imgs = int(round(sampled_probabilities[user]))
+
+        return per_participant_list, datasize
 
