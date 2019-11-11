@@ -1,6 +1,6 @@
 batch_size: 32
 test_batch_size: 100
-lr: 0.1
+lr: 0.01
 ### 0.1, 0.01, 0.001
 momentum: 0.9
 decay: 0.0005
@@ -9,7 +9,7 @@ save_on_epochs: []
 optimizer: SGD
 log_interval: 20
 
-only_eval: true
+only_eval: false
 freeze_base: false
 partial_test: 10
 multi_gpu: false
@@ -27,9 +27,10 @@ recreate_dataset: false
 sampling_dirichlet: true
 dirichlet_alpha: 0.9
 
-resumed_model: model_image_Nov.03_14.42.07/model_last.pt.tar.best
-###private: model_image_Nov.03_14.42.07/model_last.pt.tar.best
-###non-private: model_image_Oct.29_17.41.26/model_last.pt.tar.best
+resumed_model: model_image_Nov.09_01.58.58/model_last.pt.tar.best
+###averaging_diff: model_image_Nov.09_01.59.42/model_last.pt.tar.best
+###averaging: model_image_Nov.09_01.58.58/model_last.pt.tar.best
+###median: model_image_Nov.09_01.55.54/model_last.pt.tar.best
 
 diff_privacy: false
 s_norm: 15
@@ -41,7 +42,7 @@ data_type: image
 aggregation_type: averaging
 ### averaging, median
 number_of_total_participants: 100
-no_models: 99
+no_models: 100
 retrain_no_times: 100
 eta: 10
 
