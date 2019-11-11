@@ -22,6 +22,6 @@
 #    cp  /home/ty367/federated/data/corpus_80000.pt.tar /scratch/datasets/corpus_80000.pt.tar
 # fi
 
-# CUDA_VISIBLE_DEVICES=2 nohup python -u training1.py --name image >log_eval_av_0.01.txt 2>&1 &
+CUDA_VISIBLE_DEVICES=2 nohup python -u training1.py --name image >log_med_kd0.01.txt 2>&1 &
 # python /home/ty367/federated/training1.py --name text --params /home/ty367/federated/utils/words1.yaml
-python training1.py --name image
+# python training1.py --name image

@@ -312,6 +312,7 @@ def train(fisher, helper, epoch, train_data_sets, local_model, target_model, las
         logger.info(f'Test_Acc_Local: {Test_Acc_Local}')
     else:
         logger.info(f'Test_correct_class_acc_Local: {Test_correct_class_acc_Local}')
+        np.save('/home/ty367/federated/data/Test_correct_class_acc_Local_'+str(helper.params['current_time']+'.npy',np.array(Test_correct_class_acc_Local))
     logger.info(f'Test_Acc_Global: {Test_Acc_Global}')
 #     savedir1 = '/home/ty367/federated/data/'
 #     savedir2 = str(helper.data_type)+str(helper.lr)+'_freeze_base_'+str(helper.freeze_base)+'_diff_privacy_'+str(helper.diff_privacy)+'_ewc_'+str(helper.ewc)+str(helper.params['current_time'])
@@ -533,7 +534,6 @@ if __name__ == '__main__':
                 fisher = fisher_matrix_diag(helper, helper.test_data, helper.target_model, criterion)
                 torch.save(fisher, helper.resumed_fisher)
                 print("finish computing fisher")
-                assert 1==2
             else:
                 fisher = torch.load(helper.resumed_fisher)
         else:

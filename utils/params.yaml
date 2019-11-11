@@ -1,6 +1,6 @@
 batch_size: 32
 test_batch_size: 100
-lr: 0.001
+lr: 0.01
 ### 0.1, 0.01, 0.001
 momentum: 0.9
 decay: 0.0005
@@ -13,11 +13,11 @@ only_eval: false
 freeze_base: false
 partial_test: 10
 multi_gpu: false
-ewc: true
+ewc: false
 lamb: 5000
 resumed_fisher: /home/ty367/federated/data/cifar_median_fisher.pt
 
-kd: false
+kd: true
 alpha: 0.95
 temperature: 6
 
@@ -28,8 +28,8 @@ sampling_dirichlet: true
 dirichlet_alpha: 0.9
 
 resumed_model: model_image_Nov.09_01.55.54/model_last.pt.tar.best
-###averaging_diff: model_image_Nov.09_01.59.42/model_last.pt.tar.best
 ###averaging: model_image_Nov.09_01.58.58/model_last.pt.tar.best
+###averaging_diff: model_image_Nov.09_01.59.42/model_last.pt.tar.best
 ###median: model_image_Nov.09_01.55.54/model_last.pt.tar.best
 
 diff_privacy: false
