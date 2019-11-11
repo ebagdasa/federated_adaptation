@@ -1,12 +1,12 @@
 #!/bin/bash
-#SBATCH -J fede
-#SBATCH -o fede.o%j
-#SBATCH -e fede.o%j
+#SBATCH -J med_
+#SBATCH -o med_.o%j
+#SBATCH -e med_.o%j
 #SBATCH -N 1
 #SBATCH -n 2
 #SBATCH --mem=10000
-#SBATCH -t 100:00:00
-#SBATCH --partition=kilian  --gres=gpu:1
+#SBATCH -t 12:00:00
+#SBATCH --partition=desa  --gres=gpu:1
 
 
 # OPTIONAL: uncomment this if you need to copy a dataset over to scratch
@@ -22,5 +22,6 @@
 #    cp  /home/ty367/federated/data/corpus_80000.pt.tar /scratch/datasets/corpus_80000.pt.tar
 # fi
 
-CUDA_VISIBLE_DEVICES=2 nohup python -u training1.py --name image >log_eval_av_0.01.txt 2>&1 &
+# CUDA_VISIBLE_DEVICES=2 nohup python -u training1.py --name image >log_eval_av_0.01.txt 2>&1 &
 # python /home/ty367/federated/training1.py --name text --params /home/ty367/federated/utils/words1.yaml
+python training1.py --name image

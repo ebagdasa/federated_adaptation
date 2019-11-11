@@ -36,7 +36,61 @@ criterion = torch.nn.CrossEntropyLoss()
 
 
 ########################################################################################################################
-def fisher_matrix_diag(helper, train_data_sets, target_model, criterion):
+# def fisher_matrix_diag(helper, train_data_sets, target_model, criterion):
+#     model = target_model
+#     # Init
+#     fisher={}
+#     for n,p in model.named_parameters():
+#         fisher[n]=0*p.data
+#     # Compute
+#     model.train()
+#     start_time = time.time()
+#     numcount = 0
+#     for model_id in range(len(train_data_sets)):
+#         if helper.data_type == 'text':
+#             current_data_model, train_data_all = train_data_sets[model_id]
+#             ntokens = len(helper.corpus.dictionary)
+#             if helper.multi_gpu:
+#                 hidden = model.module.init_hidden(helper.batch_size)
+#             else:
+#                 hidden = model.init_hidden(helper.batch_size)
+#             trunk = len(train_data_all)//100*(100-helper.local_test_perc)
+#             train_data = train_data_all[:trunk]
+#             test_data = train_data_all[trunk:]
+#             data_iterator = range(0, train_data.size(0) - 1, helper.bptt)
+#             numcount += train_data.size(0)
+#         else:
+#             _, (current_data_model, train_data) = train_data_sets[model_id]
+#             (_, test_data)  = helper.test_local_data[current_data_model]  
+#             data_iterator = train_data
+#             numcount = len(train_data.dataset)
+            
+#         for batch_id, batch in enumerate(data_iterator):
+#             data, targets = helper.get_batch(train_data, batch,
+#                                               evaluation=False)
+#             # Forward and backward
+#             model.zero_grad()
+            
+#             if helper.data_type == 'text':
+#                 hidden = tuple([each.data for each in hidden])
+#                 output, hidden = model(data, hidden)
+#                 loss = criterion(output.view(-1, ntokens), targets)
+#             else:
+#                 output = model(data)
+#                 loss = criterion(output, targets)
+#             loss.backward()
+#             # Get gradients
+#             for n,p in model.named_parameters():
+#                 if p.grad is not None:
+#                     fisher[n]+=p.grad.data.pow(2)*len(data)
+#     # Mean
+#     for n,_ in model.named_parameters():
+#         fisher[n]=fisher[n]/numcount
+#         fisher[n]=torch.autograd.Variable(fisher[n],requires_grad=False)
+#     print('time spent on fisher:',time.time()-start_time)
+#     return fisher
+
+def fisher_matrix_diag(helper, data_source, target_model, criterion):
     model = target_model
     # Init
     fisher={}
@@ -45,51 +99,41 @@ def fisher_matrix_diag(helper, train_data_sets, target_model, criterion):
     # Compute
     model.train()
     start_time = time.time()
-    numcount = 0
-    for model_id in range(len(train_data_sets)):
-        if helper.data_type == 'text':
-            current_data_model, train_data_all = train_data_sets[model_id]
-            ntokens = len(helper.corpus.dictionary)
-            if helper.multi_gpu:
-                hidden = model.module.init_hidden(helper.batch_size)
-            else:
-                hidden = model.init_hidden(helper.batch_size)
-            trunk = len(train_data_all)//100*(100-helper.local_test_perc)
-            train_data = train_data_all[:trunk]
-            test_data = train_data_all[trunk:]
-            data_iterator = range(0, train_data.size(0) - 1, helper.bptt)
-            numcount += train_data.size(0)
+    if helper.data_type == 'text':
+        if helper.multi_gpu:
+            hidden = model.module.init_hidden(helper.params['test_batch_size'])
         else:
-            _, (current_data_model, train_data) = train_data_sets[model_id]
-            (_, test_data)  = helper.test_local_data[current_data_model]  
-            data_iterator = train_data
-            numcount = len(train_data.dataset)
-            
-        for batch_id, batch in enumerate(data_iterator):
-            data, targets = helper.get_batch(train_data, batch,
-                                              evaluation=False)
-            # Forward and backward
-            model.zero_grad()
-            
-            if helper.data_type == 'text':
-                hidden = tuple([each.data for each in hidden])
-                output, hidden = model(data, hidden)
-                loss = criterion(output.view(-1, ntokens), targets)
-            else:
-                output = model(data)
-                loss = criterion(output, targets)
-            loss.backward()
-            # Get gradients
-            for n,p in model.named_parameters():
-                if p.grad is not None:
-                    fisher[n]+=p.grad.data.pow(2)*len(data)
+            hidden = model.init_hidden(helper.params['test_batch_size'])
+        data_iterator = range(0, data_source.size(0)-1, helper.params['bptt'])
+        dataset_size = len(data_source)
+    else:
+        dataset_size = len(data_source.dataset)
+        data_iterator = data_source
+
+    for batch_id, batch in enumerate(data_iterator):
+        data, targets = helper.get_batch(data_source, batch, evaluation=True)
+        # Forward and backward
+        model.zero_grad()
+        if helper.data_type == 'text':
+            hidden = tuple([each.data for each in hidden])
+            output, hidden = model(data, hidden)
+            output_flat = output.view(-1, helper.n_tokens)
+            loss = criterion(output_flat, targets)
+        else:
+            output = model(data)
+            loss = criterion(output, targets)
+        loss.backward()
+        # Get gradients
+        for n,p in model.named_parameters():
+            if p.grad is not None:
+                fisher[n]+=p.grad.data.pow(2)*len(data)
     # Mean
     for n,_ in model.named_parameters():
-        fisher[n]=fisher[n]/numcount
+        fisher[n]=fisher[n]/dataset_size
         fisher[n]=torch.autograd.Variable(fisher[n],requires_grad=False)
     print('time spent on fisher:',time.time()-start_time)
     return fisher
-
+            
 def criterion1(global_model, model, fisher, output, targets, criterion, lamb=5000):
     model_old = deepcopy(global_model)
     model_old.eval()
@@ -486,8 +530,10 @@ if __name__ == '__main__':
     if not helper.only_eval:
         if helper.ewc:
             if not os.path.exists(helper.resumed_fisher):
-                fisher = fisher_matrix_diag(helper, [(pos, helper.train_data[pos]) for pos in participant_ids[1:]], helper.target_model, criterion)
+                fisher = fisher_matrix_diag(helper, helper.test_data, helper.target_model, criterion)
                 torch.save(fisher, helper.resumed_fisher)
+                print("finish computing fisher")
+                assert 1==2
             else:
                 fisher = torch.load(helper.resumed_fisher)
         else:
