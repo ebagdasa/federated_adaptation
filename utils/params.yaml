@@ -17,8 +17,8 @@ ewc: false
 lamb: 5000
 resumed_fisher: /home/ty367/federated/data/cifar_median_fisher.pt
 
-kd: true
-alpha: 0.95
+kd: false
+alpha: 0.1
 temperature: 6
 
 save_model: false
@@ -27,7 +27,7 @@ recreate_dataset: false
 sampling_dirichlet: true
 dirichlet_alpha: 0.9
 
-resumed_model: model_image_Nov.09_01.55.54/model_last.pt.tar.best
+# resumed_model: model_image_Nov.09_01.55.54/model_last.pt.tar.best
 ###averaging: model_image_Nov.09_01.58.58/model_last.pt.tar.best
 ###averaging_diff: model_image_Nov.09_01.59.42/model_last.pt.tar.best
 ###median: model_image_Nov.09_01.55.54/model_last.pt.tar.best
@@ -43,7 +43,7 @@ aggregation_type: averaging
 ### averaging, median
 number_of_total_participants: 100
 no_models: 100
-retrain_no_times: 100
+retrain_no_times: 500
 eta: 10
 
 log: True

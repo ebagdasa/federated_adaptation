@@ -2,7 +2,7 @@ data_type: text
 
 # Training params
 test_batch_size: 10
-lr: 0.1
+lr: 40
 ####lr:0.1, 1, 10, 20, 40
 momentum: 0
 decay: 0
@@ -10,7 +10,7 @@ batch_size: 20
 only_eval: false
 
 # FedLearning params, 80000
-aggregation_type: averaging
+aggregation_type: median
 no_models: 100
 epochs: 5010
 retrain_no_times: 2
@@ -51,6 +51,7 @@ tied: true
 bptt: 64
 clip: 0.25
 seed: 1
-data_folder: /scratch/datasets
+data_folder: /home/ty367/federated/data/
+# data_folder: /scratch/datasets
 #data_folder1: /home/ty367/federated/data
 ####  /scratch/datasets  /home/ty367/federated/data

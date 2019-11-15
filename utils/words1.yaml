@@ -20,7 +20,7 @@ temperature: 6
 
 
 # FedLearning params, 80000
-no_models: 5
+no_models: 100
 epochs: 5000
 retrain_no_times: 100
 number_of_total_participants: 80000
@@ -40,9 +40,9 @@ local_test_perc: 10
 
 
 recreate_dataset: false
-resumed_model: model_text_Sep.29_15.54.52/model_last.pt.tar.epoch_5000
+resumed_model: model_text_Oct.15_15.55.39/model_last.pt.tar.best
 ###Private: model_text_Oct.15_15.55.39/model_last.pt.tar.best
-###Non Private: model_text_Sep.29_15.54.52/model_last.pt.tar.epoch_5000
+###Non Private: model_text_Sep.29_15.54.52/model_last.pt.tar.best
 resumed_fisher: /home/ty367/federated/data/private_fisher.pt
 ###Private: /home/ty367/federated/data/private_fisher.pt
 ###Non Private: /home/ty367/federated/data/fisher.pt
