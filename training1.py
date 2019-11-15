@@ -568,7 +568,7 @@ if __name__ == '__main__':
         final_loss, final_acc, correct_class_acc = test(helper=helper, data_source=helper.test_data,
                                               model=helper.target_model, is_poison=False, visualize=True)
         logger.info(f"Final correct_class_acc of Global model: {correct_class_acc}.")
-    logger.info(f"Final (partial) Test_Loss over global testset for Global model: {final_loss}, Final (partial) Test_Acc over global testset for Global model: {final_acc}.")
+        logger.info(f"Final (partial) Test_Loss over global testset for Global model: {final_loss}, Final (partial) Test_Acc over global testset for Global model: {final_acc}.")
     logger.info(f"This run has a label: {helper.params['current_time']}. ")
     
 #     logger.info(f"Visdom environment: {helper.params['environment_name']}")

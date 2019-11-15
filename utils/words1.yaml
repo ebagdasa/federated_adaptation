@@ -14,7 +14,7 @@ multi_gpu: false
 ewc: false
 lamb: 5000
 
-kd: false
+kd: true
 alpha: 0.95
 temperature: 6
 
