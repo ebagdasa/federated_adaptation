@@ -370,7 +370,6 @@ def eval_(helper, data_source, model, is_poison=False):
         if helper.data_type == 'text':
             acc = 100.0 * (correct / total_test_words)
             total_l = total_loss.item() / (dataset_size)
-#             acc = acc.item()
         else:
             acc = 100.0 * (float(correct) / float(dataset_size))
             total_l = total_loss / dataset_size
@@ -542,7 +541,7 @@ if __name__ == '__main__':
 #         for epoch in range(helper.start_epoch, helper.params['epochs'] + 1):
         for epoch in range(0,1):
             start_time = time.time()
-
+            random.seed(10)
             subset_data_chunks = random.sample(participant_ids, helper.no_models)
 #             subset_data_chunks = participant_ids#[1:]
 #             subset_data_chunks = [4,10,20,30,50]## to print some word samples

@@ -164,7 +164,6 @@ def eval_(helper, data_source, model, is_poison=False):
         if helper.data_type == 'text':
             acc = 100.0 * (correct / total_test_words)
             total_l = total_loss.item() / (dataset_size-1)
-            acc = acc.item()
         else:
             acc = 100.0 * (float(correct) / float(dataset_size))
             total_l = total_loss / dataset_size
