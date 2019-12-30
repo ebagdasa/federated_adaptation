@@ -1,4 +1,5 @@
 data_type: text
+save_name: /home/ty367/federated/log/text_med_ftlr1_ewc
 
 # Training params
 test_batch_size: 10
@@ -13,15 +14,14 @@ partial_test: 10
 multi_gpu: false
 
 ewc_kd: false
-ewc: false
+ewc: true
 lamb: 5000
-kd: true
+kd: false
 alpha: 0.95
 temperature: 6
 
-
 # FedLearning params, 80000
-no_models: 1000
+no_models: 79999
 epochs: 5000
 retrain_no_times: 200
 number_of_total_participants: 80000
@@ -65,6 +65,6 @@ tied: true
 bptt: 64
 clip: 0.25
 seed: 1
-data_folder: /scratch/datasets
-#data_folder1: /home/ty367/federated/data
+#data_folder: /scratch/datasets
+data_folder: /home/ty367/federated/data
 ####  /scratch/datasets  /home/ty367/federated/data

@@ -23,6 +23,7 @@ if [ ! -d /scratch/datasets/corpus_80000.pt.tar ]; then
 fi
 
 # CUDA_VISIBLE_DEVICES=1 nohup python -u training1.py --name image >log_av_sc0.01.txt 2>&1 &
-# CUDA_VISIBLE_DEVICES=2 nohup python /home/ty367/federated/training.py --name text --params /home/ty367/federated/utils/words.yaml >log_text_median.txt 2>&1 &
+# CUDA_VISIBLE_DEVICES=3 nohup python /home/ty367/federated/training1.py --name text --params /home/ty367/federated/utils/words1.yaml >text_med_ftlr1_kd.txt 2>&1 &
+# CUDA_VISIBLE_DEVICES=0 python /home/ty367/federated/training1.py --name text --params /home/ty367/federated/utils/words1.yaml
 # python training1.py --name image
 python -u /home/ty367/federated/training1.py --name text --params /home/ty367/federated/utils/words1.yaml

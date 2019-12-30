@@ -323,7 +323,7 @@ def train(fisher, helper, epoch, train_data_sets, local_model, target_model, las
 
         t = time.time()
         if helper.data_type == 'text':
-            logger.info(f'testing model on local testset at model_id: {model_id}')
+            logger.info(f'testing fine tuned text model on local testset at model_id: {model_id}')
             local_loss, local_correct, local_total_test_wors, local_acc = eval_(helper, test_data, model)
             Test_Acc_Local.append(local_acc)
 #             logger.info(f'testing model on global testset at model_id: {model_id}')
@@ -331,7 +331,7 @@ def train(fisher, helper, epoch, train_data_sets, local_model, target_model, las
 #                                          model=model, is_poison=False, visualize=True)
 #             Test_Acc_Global.append(epoch_acc)
         else:
-            logger.info(f'testing model on global testset at model_id: {model_id}')
+            logger.info(f'testing fine tuned image model on global testset at model_id: {model_id}')
             epoch_loss, epoch_acc, correct_class_acc = test(helper=helper, data_source=helper.test_data,
                                          model=model, is_poison=False, visualize=True)
             Test_correct_class_acc_Local[model_id,:] = correct_class_acc
@@ -339,10 +339,11 @@ def train(fisher, helper, epoch, train_data_sets, local_model, target_model, las
         logger.info(f'time spent on testing: {time.time() - t}')
     if helper.data_type == 'text':
         logger.info(f'Test_Acc_Local: {Test_Acc_Local}')
+        np.save(helper.save_name + '_Test_Acc_Local.npy',np.array(Test_Acc_Local))
     else:
         logger.info(f'Test_correct_class_acc_Local: {Test_correct_class_acc_Local}')
-        np.save('/home/ty367/federated/data/Test_correct_class_acc_Local_'+str(helper.params['current_time'])+'.npy',np.array(Test_correct_class_acc_Local))
-        logger.info(f'Test_Acc_Global: {Test_Acc_Global}')
+        np.save(helper.save_name + '_Test_Acc_Global.npy',np.array(Test_Acc_Global))
+        np.save(helper.save_name + '_Test_correct_class_acc_Local.npy',np.array(Test_correct_class_acc_Local))
 #     savedir1 = '/home/ty367/federated/data/'
 #     savedir2 = str(helper.data_type)+str(helper.lr)+'_freeze_base_'+str(helper.freeze_base)+'_diff_privacy_'+str(helper.diff_privacy)+'_ewc_'+str(helper.ewc)+str(helper.params['current_time'])
 #     logger.info(f'stats: {savedir2}')
@@ -428,7 +429,8 @@ def test_local(helper, train_data_sets, target_model):
 #     savedir2 = str(helper.data_type)+str(helper.params['current_time'])
 #     logger.info(f'stats: {savedir2}')    
 #     np.save(savedir1+'Test_local_Acc_overall'+savedir2+'.npy',Test_local_Acc) 
-    logger.info(f'Test_local_Acc:test_local: {Test_local_Acc}')
+#     logger.info(f'Test_local_Acc:test_local: {Test_local_Acc}')
+    np.save(helper.save_name + '_Target_Test_Acc_Local.npy',np.array(Test_local_Acc))
         
 def test(helper, data_source,
          model, is_poison=False, visualize=True):
@@ -570,9 +572,9 @@ if __name__ == '__main__':
         for epoch in range(0,1):
             start_time = time.time()
             random.seed(66)
-            subset_data_chunks = random.sample(participant_ids, helper.no_models)
-#             subset_data_chunks = participant_ids#[1:]
-#             subset_data_chunks = [4,10,20,30,50]## to print some word samples
+#             subset_data_chunks = random.sample(participant_ids, helper.no_models)
+            subset_data_chunks = participant_ids#[1:]
+#             subset_data_chunks = [4]## to print some word samples
             logger.info(f'Selected models: {subset_data_chunks}')
             t = time.time()
             
@@ -582,6 +584,7 @@ if __name__ == '__main__':
             logger.info(f'time spent on training: {time.time() - t}')
     logger.info(f"start test global accuracy over all local participants")
     if helper.data_type == 'text':
+        logger.info(f"start computing accuracy of target model over different participants")
         test_local(helper=helper, train_data_sets=[(pos, helper.train_data[pos]) for pos in
                                                     subset_data_chunks], target_model=helper.target_model)
 #     else:

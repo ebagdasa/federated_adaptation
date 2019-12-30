@@ -65,8 +65,7 @@ class Helper:
         self.freeze_base = self.params.get('freeze_base', False)
         self.partial_test = self.params.get('partial_test', False)
         self.multi_gpu = self.params.get('multi_gpu', False)
-
-
+        self.save_name = self.params.get('save_name', 'save_name')
         self.data_type = self.params.get('data_type', 'image')
         self.start_epoch = 1
 
