@@ -2,7 +2,7 @@ data_type: text
 
 # Training params
 test_batch_size: 10
-lr: 0.1
+lr: 1
 ####lr:0.1, 1, 10
 momentum: 0
 decay: 0
@@ -11,18 +11,19 @@ only_eval: false
 freeze_base: false
 partial_test: 10
 multi_gpu: false
+
+ewc_kd: false
 ewc: false
 lamb: 5000
-
 kd: true
 alpha: 0.95
 temperature: 6
 
 
 # FedLearning params, 80000
-no_models: 100
+no_models: 1000
 epochs: 5000
-retrain_no_times: 100
+retrain_no_times: 200
 number_of_total_participants: 80000
 eta: 800
 
@@ -40,13 +41,14 @@ local_test_perc: 10
 
 
 recreate_dataset: false
-resumed_model: model_text_Oct.15_15.55.39/model_last.pt.tar.best
-### averaging: model_text_Oct.15_15.55.39/model_last.pt.tar.best
-### averaging diff: model_text_Sep.29_15.54.52/model_last.pt.tar.best
+resumed_model: model_text_Nov.13_02.48.35/model_last.pt.tar.best
+### averaging: model_text_Sep.29_15.54.52/model_last.pt.tar.best
+### averaging diff: model_text_Oct.15_15.55.39/model_last.pt.tar.best
 ### median: model_text_Nov.13_02.48.35/model_last.pt.tar.best
-resumed_fisher: /home/ty367/federated/data/private_fisher.pt
-###Private: /home/ty367/federated/data/private_fisher.pt
-###Non Private: /home/ty367/federated/data/fisher.pt
+resumed_fisher: /home/ty367/federated/data/median_fisher.pt
+### averaging: averaing_fisher.pt
+### averaging diff: averaing_diff_fisher.pt
+### median: median_fisher.pt
 
 scale_weights: 100
 

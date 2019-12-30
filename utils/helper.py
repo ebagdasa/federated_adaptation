@@ -54,6 +54,7 @@ class Helper:
         self.kd = self.params.get('kd', False)
         self.alpha = self.params.get('alpha', 0.95)
         self.temperature = self.params.get('temperature', 6)
+        self.ewc_kd = self.params.get('ewc_kd', False)
         
         # LOGGING
         self.log = self.params.get('log', True)

@@ -1,12 +1,12 @@
 #!/bin/bash
-#SBATCH -J fitu
-#SBATCH -o fitu.o%j
-#SBATCH -e fitu.o%j
+#SBATCH -J med_kd1
+#SBATCH -o med_kd1.o%j
+#SBATCH -e med_kd1.o%j
 #SBATCH -N 1
 #SBATCH -n 2
 #SBATCH --mem=10000
 #SBATCH -t 12:00:00
-#SBATCH --partition=default_gpu  --gres=gpu:1
+#SBATCH --partition=desa  --gres=gpu:1
 
 
 # OPTIONAL: uncomment this if you need to copy a dataset over to scratch
@@ -25,4 +25,4 @@ fi
 # CUDA_VISIBLE_DEVICES=1 nohup python -u training1.py --name image >log_av_sc0.01.txt 2>&1 &
 # CUDA_VISIBLE_DEVICES=2 nohup python /home/ty367/federated/training.py --name text --params /home/ty367/federated/utils/words.yaml >log_text_median.txt 2>&1 &
 # python training1.py --name image
-python /home/ty367/federated/training1.py --name text --params /home/ty367/federated/utils/words1.yaml
+python -u /home/ty367/federated/training1.py --name text --params /home/ty367/federated/utils/words1.yaml

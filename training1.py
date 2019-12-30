@@ -143,7 +143,7 @@ def criterion1(global_model, model, fisher, output, targets, criterion, lamb=500
     loss_reg=0
     for (name,param),(_,param_old) in zip(model.named_parameters(),model_old.named_parameters()):
         loss_reg+=torch.sum(fisher[name]*(param_old-param).pow(2))/2
-#     print(criterion(output, targets), loss_reg)
+#     print(criterion(output, targets).item(), loss_reg.item())
     return criterion(output, targets)+lamb*loss_reg
 
     
@@ -161,12 +161,32 @@ def loss_fn_kd(helper, outputs, targets, teacher_outputs):
     KD_loss = nn.KLDivLoss()(F.log_softmax(outputs/T, dim=1),
                              F.softmax(teacher_outputs/T, dim=1)) * (alpha * T * T) + \
               F.cross_entropy(outputs, targets) * (1. - alpha)
+#     KD_loss = -torch.sum(teacher_outputs*F.log_softmax(outputs, dim=1))/outputs.size(0)*alpha + \
+#               F.cross_entropy(outputs, targets) * (1. - alpha)
 
     return KD_loss
 
 
 ########################################################################################################################
 
+def loss_fn_ewc_kd(helper, global_model, model, fisher, output, targets, teacher_outputs, lamb=5000):
+    model_old = deepcopy(global_model)
+    model_old.eval()
+    for param in model_old.parameters():# Freeze the weights
+        param.requires_grad = False
+    # Regularization for all previous tasks
+    loss_reg=0
+    for (name,param),(_,param_old) in zip(model.named_parameters(),model_old.named_parameters()):
+        loss_reg+=torch.sum(fisher[name]*(param_old-param).pow(2))/2
+    alpha = helper.alpha
+    T = helper.temperature
+    KD_loss = nn.KLDivLoss()(F.log_softmax(output/T, dim=1),
+                             F.softmax(teacher_outputs/T, dim=1)) * (alpha * T * T) + \
+              F.cross_entropy(output, targets) * (1. - alpha)
+    return KD_loss+lamb*loss_reg
+
+
+########################################################################################################################
 
 
 def train(fisher, helper, epoch, train_data_sets, local_model, target_model, last_weight_accumulator):    
@@ -176,6 +196,7 @@ def train(fisher, helper, epoch, train_data_sets, local_model, target_model, las
     for parame in target_model.parameters():
         parame.requires_grad = False
     for model_id in tqdm(range(helper.no_models)):
+        iteration = 0
         model = local_model
         ## Synchronize LR and models
         model.copy_params(target_model.state_dict())
@@ -216,6 +237,9 @@ def train(fisher, helper, epoch, train_data_sets, local_model, target_model, las
             (_, test_data)  = helper.test_local_data[current_data_model]
         
         for internal_epoch in range(1, helper.retrain_no_times + 1):
+#             if iteration>400:
+#                 print("internal_epoch:", internal_epoch, "iteration:", iteration, 'iteration>200')
+#                 break
             model.train()
             start_time = time.time()
             total_loss = 0.
@@ -226,13 +250,14 @@ def train(fisher, helper, epoch, train_data_sets, local_model, target_model, las
                 data_iterator = train_data
             batch_num = 0
             for batch_id, batch in enumerate(data_iterator):
+                iteration += 1
                 batch_num += 1
                 optimizer.zero_grad()
                 data, targets = helper.get_batch(train_data, batch,
                                                   evaluation=False)
                 if helper.data_type == 'text':
                     hidden = tuple([each.data for each in hidden])
-                    if helper.kd:
+                    if helper.kd or helper.ewc_kd:
                         with torch.no_grad():
                             teacher_outputs, _ = target_model(data, hidden)
                     output, hidden = model(data, hidden)
@@ -240,6 +265,8 @@ def train(fisher, helper, epoch, train_data_sets, local_model, target_model, las
                         loss = criterion1(target_model, model, fisher, output.view(-1, ntokens), targets, criterion, lamb=helper.lamb)
                     elif helper.kd:
                         loss = loss_fn_kd(helper, output.view(-1, ntokens), targets, teacher_outputs.view(-1, ntokens))
+                    elif helper.ewc_kd:
+                        loss = loss_fn_ewc_kd(helper, target_model, model, fisher, output.view(-1, ntokens), targets, teacher_outputs.view(-1, ntokens), lamb=helper.lamb)
                     else:
                         loss = criterion(output.view(-1, ntokens), targets)
                     ################### test procedure
@@ -292,6 +319,7 @@ def train(fisher, helper, epoch, train_data_sets, local_model, target_model, las
                     optimizer.step()
 
                 total_loss += loss.item()
+#         assert 1==2
 
         t = time.time()
         if helper.data_type == 'text':
@@ -529,7 +557,7 @@ if __name__ == '__main__':
     with open(f'{helper.folder_path}/params.yaml', 'w') as f:
         yaml.dump(helper.params, f)
     if not helper.only_eval:
-        if helper.ewc:
+        if helper.ewc or helper.ewc_kd:
             if not os.path.exists(helper.resumed_fisher):
                 fisher = fisher_matrix_diag(helper, helper.test_data, helper.target_model, criterion)
                 torch.save(fisher, helper.resumed_fisher)
@@ -541,7 +569,7 @@ if __name__ == '__main__':
 #         for epoch in range(helper.start_epoch, helper.params['epochs'] + 1):
         for epoch in range(0,1):
             start_time = time.time()
-            random.seed(10)
+            random.seed(66)
             subset_data_chunks = random.sample(participant_ids, helper.no_models)
 #             subset_data_chunks = participant_ids#[1:]
 #             subset_data_chunks = [4,10,20,30,50]## to print some word samples
