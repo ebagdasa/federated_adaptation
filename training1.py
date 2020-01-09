@@ -198,8 +198,9 @@ def train(fisher, helper, epoch, train_data_sets, local_model, target_model, las
     for model_id in tqdm(range(helper.no_models)):
         iteration = 0
         model = local_model
-        ## Synchronize LR and models
-        model.copy_params(target_model.state_dict())
+        if not helper.scratch:
+            ## Synchronize LR and models
+            model.copy_params(target_model.state_dict())
         if helper.multi_gpu:
             model = torch.nn.DataParallel(model, dim=1).cuda()
         
@@ -326,6 +327,9 @@ def train(fisher, helper, epoch, train_data_sets, local_model, target_model, las
             logger.info(f'testing fine tuned text model on local testset at model_id: {model_id}')
             local_loss, local_correct, local_total_test_wors, local_acc = eval_(helper, test_data, model)
             Test_Acc_Local.append(local_acc)
+            if model_id%100==0:
+                logger.info(f'Saved at model_id: {model_id}')
+                np.save(helper.save_name + '_Test_Acc_Local.npy',np.array(Test_Acc_Local))
 #             logger.info(f'testing model on global testset at model_id: {model_id}')
 #             epoch_loss, epoch_acc = test(helper=helper, data_source=helper.test_data,
 #                                          model=model, is_poison=False, visualize=True)
@@ -336,6 +340,10 @@ def train(fisher, helper, epoch, train_data_sets, local_model, target_model, las
                                          model=model, is_poison=False, visualize=True)
             Test_correct_class_acc_Local[model_id,:] = correct_class_acc
             Test_Acc_Global.append(epoch_acc)
+            if model_id%100==0:
+                logger.info(f'Saved at model_id: {model_id}')
+                np.save(helper.save_name + '_Test_Acc_Global.npy',np.array(Test_Acc_Global))
+                np.save(helper.save_name + '_Test_correct_class_acc_Local.npy',np.array(Test_correct_class_acc_Local))
         logger.info(f'time spent on testing: {time.time() - t}')
     if helper.data_type == 'text':
         logger.info(f'Test_Acc_Local: {Test_Acc_Local}')

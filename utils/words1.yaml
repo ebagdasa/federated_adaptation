@@ -1,5 +1,5 @@
 data_type: text
-save_name: /home/ty367/federated/log/text_med_ftlr1_ewc
+save_name: /home/ty367/federated/log/text_scratch
 
 # Training params
 test_batch_size: 10
@@ -9,12 +9,13 @@ momentum: 0
 decay: 0
 batch_size: 20
 only_eval: false
+scratch: true
 freeze_base: false
 partial_test: 10
 multi_gpu: false
 
 ewc_kd: false
-ewc: true
+ewc: false
 lamb: 5000
 kd: false
 alpha: 0.95
@@ -23,7 +24,7 @@ temperature: 6
 # FedLearning params, 80000
 no_models: 79999
 epochs: 5000
-retrain_no_times: 200
+retrain_no_times: 100
 number_of_total_participants: 80000
 eta: 800
 
@@ -41,11 +42,11 @@ local_test_perc: 10
 
 
 recreate_dataset: false
-resumed_model: model_text_Nov.13_02.48.35/model_last.pt.tar.best
+resumed_model: model_text_Sep.29_15.54.52/model_last.pt.tar.best
 ### averaging: model_text_Sep.29_15.54.52/model_last.pt.tar.best
 ### averaging diff: model_text_Oct.15_15.55.39/model_last.pt.tar.best
 ### median: model_text_Nov.13_02.48.35/model_last.pt.tar.best
-resumed_fisher: /home/ty367/federated/data/median_fisher.pt
+resumed_fisher: /home/ty367/federated/data/averaing_fisher.pt
 ### averaging: averaing_fisher.pt
 ### averaging diff: averaing_diff_fisher.pt
 ### median: median_fisher.pt

@@ -48,6 +48,7 @@ class Helper:
         self.resumed_model = self.params.get('resumed_model', False)
         self.local_test_perc = self.params.get('local_test_perc', 10)
         self.only_eval = self.params.get('only_eval', False)
+        self.scratch = self.params.get('scratch', False)
         self.ewc = self.params.get('ewc', False)
         self.lamb = self.params.get('lamb', 5000)
         self.resumed_fisher = self.params.get('resumed_fisher', False)
