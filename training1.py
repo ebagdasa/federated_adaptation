@@ -327,7 +327,7 @@ def train(fisher, helper, epoch, train_data_sets, local_model, target_model, las
             logger.info(f'testing fine tuned text model on local testset at model_id: {model_id}')
             local_loss, local_correct, local_total_test_wors, local_acc = eval_(helper, test_data, model)
             Test_Acc_Local.append(local_acc)
-            if model_id%100==0:
+            if (model_id+1)%100==0:
                 logger.info(f'Saved at model_id: {model_id}')
                 np.save(helper.save_name + '_Test_Acc_Local.npy',np.array(Test_Acc_Local))
 #             logger.info(f'testing model on global testset at model_id: {model_id}')
@@ -340,7 +340,7 @@ def train(fisher, helper, epoch, train_data_sets, local_model, target_model, las
                                          model=model, is_poison=False, visualize=True)
             Test_correct_class_acc_Local[model_id,:] = correct_class_acc
             Test_Acc_Global.append(epoch_acc)
-            if model_id%100==0:
+            if (model_id+1)%100==0:
                 logger.info(f'Saved at model_id: {model_id}')
                 np.save(helper.save_name + '_Test_Acc_Global.npy',np.array(Test_Acc_Global))
                 np.save(helper.save_name + '_Test_correct_class_acc_Local.npy',np.array(Test_correct_class_acc_Local))
@@ -561,7 +561,31 @@ if __name__ == '__main__':
 
     participant_ids = range(len(helper.train_data))
     mean_acc = list()
-
+    
+#     #######
+#     if helper.data_type == 'text':
+#         percentages = list()
+#         for tensor in tqdm(helper.corpus.train):
+#             total_count = tensor.shape[0]
+#             count = 0
+#             elems, counts = torch.unique(tensor, return_counts=True)
+#             for i in [49999, 49998, 16027]:
+#                 bools = (elems==i)
+#                 if bools.sum() > 0:
+#                     count += counts[bools.nonzero().item()].item()
+#             percentages.append([count, total_count, elems.shape[0]])
+            
+#         np.save(helper.save_name + 'percentages.npy',np.array(percentages))
+        
+#         list_prec = list()
+#         for [utility_symbols, total_symbols, unique_symbols] in percentages:
+#             if utility_symbols/total_symbols<0.2 and total_symbols-utility_symbols>1000 and unique_symbols>100:
+#                 list_prec.append(True)
+#             else:
+#                 list_prec.append(False)
+#         np.save(helper.save_name + 'list_prec.npy',np.array(list_prec))
+    
+    
     weight_accumulator = None
     # save parameters:
     with open(f'{helper.folder_path}/params.yaml', 'w') as f:
