@@ -189,8 +189,7 @@ def loss_fn_ewc_kd(helper, global_model, model, fisher, output, targets, teacher
 ########################################################################################################################
 
 
-def train(fisher, helper, epoch, train_data_sets, local_model, target_model, last_weight_accumulator):    
-    Test_Acc_Local = list()
+def train(Test_Acc_Local, fisher, helper, epoch, train_data_sets, local_model, target_model, last_weight_accumulator):    
     Test_Acc_Global = list()
     Test_correct_class_acc_Local = np.zeros((helper.no_models,10))
     for parame in target_model.parameters():
@@ -605,12 +604,14 @@ if __name__ == '__main__':
             start_time = time.time()
             random.seed(66)
 #             subset_data_chunks = random.sample(participant_ids, helper.no_models)
-            subset_data_chunks = participant_ids#[1:]
-#             subset_data_chunks = [4]## to print some word samples
+            if not os.path.exists(helper.save_name + '_Test_Acc_Local.npy'):
+                Test_Acc_Local = list()
+            else:
+                Test_Acc_Local = list(np.load(helper.save_name + '_Test_Acc_Local.npy'))
+            subset_data_chunks = participant_ids[len(Test_Acc_Local):]#[41501:]
             logger.info(f'Selected models: {subset_data_chunks}')
             t = time.time()
-            
-            train(fisher=fisher, helper=helper, epoch=epoch, train_data_sets=[(pos, helper.train_data[pos]) for pos in subset_data_chunks],
+            train(Test_Acc_Local=Test_Acc_Local, fisher=fisher, helper=helper, epoch=epoch, train_data_sets=[(pos, helper.train_data[pos]) for pos in subset_data_chunks],
                                        local_model=helper.local_model, target_model=helper.target_model,
                                         last_weight_accumulator=weight_accumulator)
             logger.info(f'time spent on training: {time.time() - t}')

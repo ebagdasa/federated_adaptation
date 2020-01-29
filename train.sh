@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH -J pct_lst
-#SBATCH -o pct_lst.o%j
-#SBATCH -e pct_lst.o%j
+#SBATCH -J text_med_ft
+#SBATCH -o text_med_ft.o%j
+#SBATCH -e text_med_ft.o%j
 #SBATCH -N 1
 #SBATCH -n 2
 #SBATCH --mem=10000
-#SBATCH -t 2:00:00
+#SBATCH -t 480:00:00
 #SBATCH --partition=default_gpu  --gres=gpu:1
 
 

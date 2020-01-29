@@ -1,5 +1,5 @@
 data_type: text
-save_name: /home/ty367/federated/log/text_scratch
+save_name: /home/ty367/federated/log/text_med_ft
 
 # Training params
 test_batch_size: 10
@@ -9,7 +9,7 @@ momentum: 0
 decay: 0
 batch_size: 20
 only_eval: false
-scratch: true
+scratch: false
 freeze_base: false
 partial_test: 10
 multi_gpu: false
@@ -42,11 +42,11 @@ local_test_perc: 10
 
 
 recreate_dataset: false
-resumed_model: model_text_Sep.29_15.54.52/model_last.pt.tar.best
+resumed_model: model_text_Nov.13_02.48.35/model_last.pt.tar.best
 ### averaging: model_text_Sep.29_15.54.52/model_last.pt.tar.best
 ### averaging diff: model_text_Oct.15_15.55.39/model_last.pt.tar.best
 ### median: model_text_Nov.13_02.48.35/model_last.pt.tar.best
-resumed_fisher: /home/ty367/federated/data/averaing_fisher.pt
+resumed_fisher: /home/ty367/federated/data/median_fisher.pt
 ### averaging: averaing_fisher.pt
 ### averaging diff: averaing_diff_fisher.pt
 ### median: median_fisher.pt
