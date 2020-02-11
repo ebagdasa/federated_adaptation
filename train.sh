@@ -23,7 +23,7 @@
 # fi
 
 # CUDA_VISIBLE_DEVICES=1 nohup python -u training1.py --name image >log_av_sc0.01.txt 2>&1 &
-# CUDA_VISIBLE_DEVICES=3 nohup python /home/ty367/federated/training1.py --name text --params /home/ty367/federated/utils/words1.yaml >text_scratch.txt 2>&1 &
+# CUDA_VISIBLE_DEVICES=1 nohup python /home/ty367/federated/training1.py --name text --params /home/ty367/federated/utils/words1.yaml >text_av_fbr.txt 2>&1 &
 # CUDA_VISIBLE_DEVICES=0 python /home/ty367/federated/training1.py --name text --params /home/ty367/federated/utils/words1.yaml
 # python training1.py --name image
 python -u /home/ty367/federated/training1.py --name text --params /home/ty367/federated/utils/words1.yaml

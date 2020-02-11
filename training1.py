@@ -194,7 +194,7 @@ def train(Test_Acc_Local, fisher, helper, epoch, train_data_sets, local_model, t
     Test_correct_class_acc_Local = np.zeros((helper.no_models,10))
     for parame in target_model.parameters():
         parame.requires_grad = False
-    for model_id in tqdm(range(helper.no_models)):
+    for model_id in tqdm(range(len(train_data_sets))):
         iteration = 0
         model = local_model
         if not helper.scratch:
@@ -326,7 +326,7 @@ def train(Test_Acc_Local, fisher, helper, epoch, train_data_sets, local_model, t
             logger.info(f'testing fine tuned text model on local testset at model_id: {model_id}')
             local_loss, local_correct, local_total_test_wors, local_acc = eval_(helper, test_data, model)
             Test_Acc_Local.append(local_acc)
-            if (model_id+1)%100==0:
+            if (model_id+1)%100==0 or (model_id+1)==len(train_data_sets):
                 logger.info(f'Saved at model_id: {model_id}')
                 np.save(helper.save_name + '_Test_Acc_Local.npy',np.array(Test_Acc_Local))
 #             logger.info(f'testing model on global testset at model_id: {model_id}')
@@ -339,7 +339,7 @@ def train(Test_Acc_Local, fisher, helper, epoch, train_data_sets, local_model, t
                                          model=model, is_poison=False, visualize=True)
             Test_correct_class_acc_Local[model_id,:] = correct_class_acc
             Test_Acc_Global.append(epoch_acc)
-            if (model_id+1)%100==0:
+            if (model_id+1)%100==0 or (model_id+1)==len(train_data_sets):
                 logger.info(f'Saved at model_id: {model_id}')
                 np.save(helper.save_name + '_Test_Acc_Global.npy',np.array(Test_Acc_Global))
                 np.save(helper.save_name + '_Test_correct_class_acc_Local.npy',np.array(Test_correct_class_acc_Local))
@@ -608,7 +608,7 @@ if __name__ == '__main__':
                 Test_Acc_Local = list()
             else:
                 Test_Acc_Local = list(np.load(helper.save_name + '_Test_Acc_Local.npy'))
-            subset_data_chunks = participant_ids[len(Test_Acc_Local):]#[41501:]
+            subset_data_chunks = participant_ids[len(Test_Acc_Local):]
             logger.info(f'Selected models: {subset_data_chunks}')
             t = time.time()
             train(Test_Acc_Local=Test_Acc_Local, fisher=fisher, helper=helper, epoch=epoch, train_data_sets=[(pos, helper.train_data[pos]) for pos in subset_data_chunks],
