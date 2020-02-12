@@ -9,8 +9,8 @@ save_on_epochs: []
 optimizer: SGD
 log_interval: 20
 
-save_name: /home/ty367/federated/log/image_scratch1
-scratch: true
+save_name: /home/ty367/federated/log/image_debug
+scratch: false
 only_eval: false
 freeze_base: false
 partial_test: 10
@@ -26,10 +26,8 @@ temperature: 6
 save_model: false
 scheduler: False
 recreate_dataset: false
-sampling_dirichlet: true
-dirichlet_alpha: 0.9
 
-# resumed_model: model_image_Nov.09_01.55.54/model_last.pt.tar.best
+resumed_model: model_image_Nov.09_01.55.54/model_last.pt.tar.best
 ###averaging: model_image_Nov.09_01.58.58/model_last.pt.tar.best
 ###averaging_diff: model_image_Nov.09_01.59.42/model_last.pt.tar.best
 ###median: model_image_Nov.09_01.55.54/model_last.pt.tar.best
@@ -44,9 +42,9 @@ data_type: image
 aggregation_type: averaging
 ### averaging, median
 number_of_total_participants: 100
-no_models: 100
-retrain_no_times: 500
-eta: 10
+no_models: 10
+retrain_no_times: 2
+eta: 1
 
 log: True
 tb: True

@@ -35,7 +35,7 @@ def get_word_list(line, dictionary):
 
 
 class Corpus(object):
-    def __init__(self, params, dictionary, is_poison=False):
+    def __init__(self, params, dictionary):
         self.path = params['data_folder']
         authors_no = params['number_of_total_participants']
         self.local_test_perc = params['local_test_perc']
@@ -43,7 +43,7 @@ class Corpus(object):
         self.dictionary = dictionary
         self.no_tokens = len(self.dictionary)
         self.authors_no = authors_no
-        self.train, self.test, self.diff_words, self.voc_size = self.tokenize_train(f'{self.path}/shard_by_author', is_poison=is_poison)
+        self.train, self.test, self.diff_words, self.voc_size = self.tokenize_train(f'{self.path}/shard_by_author')
 #         self.test = self.tokenize(os.path.join(self.path, 'test_data.json'))
 
     def load_poison_data(self, number_of_words):
@@ -69,7 +69,7 @@ class Corpus(object):
         return ids
 
 
-    def tokenize_train(self, path, is_poison=False):
+    def tokenize_train(self, path):
         """
         We return a list of ids per each participant.
         :param path:

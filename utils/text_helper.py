@@ -67,11 +67,10 @@ class TextHelper(Helper):
 #         corpus_file_name1 = f"{self.params['data_folder1']}/" \
 #             f"corpus_{self.params['number_of_total_participants']}.pt.tar"
         if self.recreate_dataset:
-            self.corpus = Corpus(self.params, dictionary=dictionary, is_poison=False)
+            self.corpus = Corpus(self.params, dictionary=dictionary)
             torch.save(self.corpus, corpus_file_name)
             torch.save(self.corpus.diff_words, corpus_file_name_diff_words)
             torch.save(self.corpus.voc_size, corpus_file_name_voc_size)            
-#             torch.save(self.corpus, corpus_file_name1)
         else:
             self.corpus = torch.load(corpus_file_name)
         logger.info('Loading data. Completed.')

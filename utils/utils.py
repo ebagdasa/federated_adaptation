@@ -339,3 +339,71 @@ def create_logger():
     log.addHandler(stream_handler)
     return logging.getLogger(__name__)
 
+def fisher_matrix_diag(helper, data_source, target_model, criterion):
+    model = target_model
+    # Init
+    fisher={}
+    for n,p in model.named_parameters():
+        fisher[n]=0*p.data
+    # Compute
+    model.train()
+    start_time = time.time()
+    if helper.data_type == 'text':
+        if helper.multi_gpu:
+            hidden = model.module.init_hidden(helper.params['test_batch_size'])
+        else:
+            hidden = model.init_hidden(helper.params['test_batch_size'])
+        data_iterator = range(0, data_source.size(0)-1, helper.params['bptt'])
+        dataset_size = len(data_source)
+    else:
+        dataset_size = len(data_source.dataset)
+        data_iterator = data_source
+
+    for batch_id, batch in enumerate(data_iterator):
+        data, targets = helper.get_batch(data_source, batch, evaluation=True)
+        # Forward and backward
+        model.zero_grad()
+        if helper.data_type == 'text':
+            hidden = tuple([each.data for each in hidden])
+            output, hidden = model(data, hidden)
+            output_flat = output.view(-1, helper.n_tokens)
+            loss = criterion(output_flat, targets)
+        else:
+            output = model(data)
+            loss = criterion(output, targets)
+        loss.backward()
+        # Get gradients
+        for n,p in model.named_parameters():
+            if p.grad is not None:
+                fisher[n]+=p.grad.data.pow(2)*len(data)
+    # Mean
+    for n,_ in model.named_parameters():
+        fisher[n]=fisher[n]/dataset_size
+        fisher[n]=torch.autograd.Variable(fisher[n],requires_grad=False)
+    print('time spent on computing fisher:',time.time()-start_time)
+    return fisher
+
+def criterion_ewc(global_model, model, fisher, output, targets, criterion, lamb=5000):
+    model_old = deepcopy(global_model)
+    model_old.eval()
+    for param in model_old.parameters():# Freeze the weights
+        param.requires_grad = False
+    # Regularization for all previous tasks
+    loss_reg=0
+    for (name,param),(_,param_old) in zip(model.named_parameters(),model_old.named_parameters()):
+        loss_reg+=torch.sum(fisher[name]*(param_old-param).pow(2))/2
+    return criterion(output, targets)+lamb*loss_reg
+
+def criterion_kd(helper, outputs, targets, teacher_outputs):
+    """
+    Compute the knowledge-distillation (KD) loss given outputs, labels.
+    "Hyperparameters": temperature and alpha
+    NOTE: the KL Divergence for PyTorch comparing the softmaxs of teacher
+    and student expects the input tensor to be log probabilities! See Issue #2
+    """
+    alpha = helper.alpha
+    T = helper.temperature
+    KD_loss = nn.KLDivLoss()(F.log_softmax(outputs/T, dim=1),
+                             F.softmax(teacher_outputs/T, dim=1)) * (alpha * T * T) + \
+              F.cross_entropy(outputs, targets) * (1. - alpha)
+    return KD_loss

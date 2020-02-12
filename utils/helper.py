@@ -55,7 +55,6 @@ class Helper:
         self.kd = self.params.get('kd', False)
         self.alpha = self.params.get('alpha', 0.95)
         self.temperature = self.params.get('temperature', 6)
-        self.ewc_kd = self.params.get('ewc_kd', False)
         
         # LOGGING
         self.log = self.params.get('log', True)
@@ -281,7 +280,7 @@ class Helper:
                 continue
                 
             update_per_layer = weight_accumulator[name] * \
-                               (self.eta / self.number_of_total_participants)
+                               (self.eta / self.no_models)
 
             if self.diff_privacy:
                 update_per_layer.add_(self.dp_noise(data, self.params['sigma']))
@@ -304,7 +303,7 @@ class Helper:
             if data.dtype != torch.float32:
                 continue
 
-            update_per_layer = weight_accumulator[name].median(dim=0).values
+            update_per_layer = self.eta * weight_accumulator[name].median(dim=0).values
 
             data.add_(update_per_layer.cuda())
 

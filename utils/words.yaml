@@ -3,23 +3,19 @@ data_type: text
 # Training params
 test_batch_size: 10
 lr: 40
-####lr:0.1, 1, 10, 20, 40
 momentum: 0
 decay: 0
 batch_size: 20
 only_eval: false
 
 # FedLearning params, 80000
-aggregation_type: median
+aggregation_type: averaging
 no_models: 100
-epochs: 5010
+epochs: 5000
 retrain_no_times: 2
 number_of_total_participants: 80000
-eta: 800
-#original: 800
-#now: 
+eta: 1
 
-#
 save_model: true
 save_on_epochs: [10, 100, 250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000, 3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000]
 word_dictionary_path: /home/ty367/federated/utils/50k_word_dictionary.pt
@@ -33,9 +29,6 @@ local_test_perc: 10
 
 # prepare data
 recreate_dataset: false
-sampling_dirichlet: false
-dirichlet_alpha: 0.9
-
 scale_weights: 100
 
 diff_privacy: false
@@ -52,6 +45,3 @@ bptt: 64
 clip: 0.25
 seed: 1
 data_folder: /home/ty367/federated/data/
-# data_folder: /scratch/datasets
-#data_folder1: /home/ty367/federated/data
-####  /scratch/datasets  /home/ty367/federated/data

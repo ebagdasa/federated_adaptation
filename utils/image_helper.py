@@ -31,7 +31,7 @@ class ImageHelper(Helper):
                                 created_time=self.params['current_time'])
         target_model.cuda()
         if self.resumed_model:
-            loaded_params = torch.load(f"/home/ty367/federated/saved_models/{self.params['resumed_model']}")
+            loaded_params = torch.load(f"./saved_models/{self.params['resumed_model']}")
             target_model.load_state_dict(loaded_params['state_dict'])
             self.start_epoch = loaded_params['epoch']
             self.params['lr'] = loaded_params.get('lr', self.params['lr'])
@@ -64,39 +64,20 @@ class ImageHelper(Helper):
 
         self.test_dataset = datasets.CIFAR10('./data', train=False, transform=transform_test)
         if self.recreate_dataset:
-            if self.sampling_dirichlet:
-                ## sample indices for participants using Dirichlet distribution
-                indices_per_participant, train_datasize = self.sample_dirichlet_data(self.train_dataset,
-                    self.params['number_of_total_participants'],
-                    alpha=self.params['dirichlet_alpha'])
-                train_loaders = [(user, self.get_train(indices_per_participant[user])) for user in range(self.params['number_of_total_participants'])]
-                indices_per_participant_test_local, test_datasize = self.sample_dirichlet_data(self.test_dataset,
-                    self.params['number_of_total_participants'],
-                    alpha=self.params['dirichlet_alpha'])
-                self.test_local_data = [(user, self.get_train(indices_per_participant_test_local[user])) for user in range(self.params['number_of_total_participants'])]
-                torch.save(train_datasize, './data/CIFAR_train_datasize.pt')
-                torch.save(test_datasize, './data/CIFAR_test_datasize.pt')
-            else:
-                ## sample indices for participants that are equally
-                # splitted to 500 images per participant
-                all_range_train = list(range(len(self.train_dataset)))
-                random.shuffle(all_range_train)
-                train_loaders = [(pos, self.get_train_old(all_range_train, pos))
-                                 for pos in range(self.params['number_of_total_participants'])]
-                all_range_test = list(range(len(self.test_dataset)))
-                random.shuffle(all_range_test)
-                self.test_local_data = [(pos, self.get_test_old(all_range_test, pos))
-                                 for pos in range(self.params['number_of_total_participants'])]
-            self.train_data = train_loaders
+            ## sample indices for participants using Dirichlet distribution
+            indices_per_participant, train_image_weight = self.sample_dirichlet_data(self.train_dataset,
+                self.params['number_of_total_participants'],
+                alpha=0.9)
+            self.train_data = [(user, self.get_train(indices_per_participant[user])) for user in range(self.params['number_of_total_participants'])]
+            self.train_image_weight = train_image_weight
             self.test_data = self.get_test()
             torch.save(self.train_data, './data/CIFAR_train_data.pt.tar')
+            torch.save(self.train_image_weight, './data/CIFAR_train_image_weight.pt')
             torch.save(self.test_data, './data/CIFAR_test_data.pt.tar')
-            torch.save(self.test_local_data, './data/CIFAR_test_local_data.pt.tar')
         else:
             self.train_data = torch.load('./data/CIFAR_train_data.pt.tar')
+            self.train_image_weight = torch.load('./data/CIFAR_train_image_weight.pt')
             self.test_data = torch.load('./data/CIFAR_test_data.pt.tar')
-            self.test_local_data = torch.load('./data/CIFAR_test_local_data.pt.tar')
-
 
     def get_test(self):
 
@@ -120,43 +101,6 @@ class ImageHelper(Helper):
                                                        indices))
         return train_loader
 
-
-
-
-    def get_train_old(self, all_range, model_no):
-        """
-        This method equally splits the dataset.
-        :param params:
-        :param all_range:
-        :param model_no:
-        :return:
-        """
-
-        data_len = int(len(self.train_dataset) / self.params['number_of_total_participants'])
-        sub_indices = all_range[model_no * data_len: (model_no + 1) * data_len]
-        train_loader = torch.utils.data.DataLoader(self.train_dataset,
-                                                   batch_size=self.params['batch_size'],
-                                                   sampler=torch.utils.data.sampler.SubsetRandomSampler(
-                                                       sub_indices))
-        return train_loader
-    
-    def get_test_old(self, all_range, model_no):
-        """
-        This method equally splits the dataset.
-        :param params:
-        :param all_range:
-        :param model_no:
-        :return:
-        """
-        data_len = int(len(self.test_dataset) / self.params['number_of_total_participants'])
-        sub_indices = all_range[model_no * data_len: (model_no + 1) * data_len]
-        test_loader = torch.utils.data.DataLoader(self.test_dataset,
-                                                   batch_size=self.params['test_batch_size'],
-                                                   sampler=torch.utils.data.sampler.SubsetRandomSampler(
-                                                       sub_indices))
-        return test_loader
-
-
     def get_batch(self, train_data, bptt, evaluation=False):
         data, target = bptt
         data = data.to(self.device)
@@ -179,8 +123,6 @@ class ImageHelper(Helper):
         cifar_classes = {}
         for ind, x in enumerate(dataset):
             _, label = x
-#             if ind in self.params['poison_images'] or ind in self.params['poison_images_test']:
-#                 continue
             if label in cifar_classes:
                 cifar_classes[label].append(ind)
             else:
@@ -200,13 +142,12 @@ class ImageHelper(Helper):
                 sampled_list = cifar_classes[n][:min(len(cifar_classes[n]), no_imgs)]
                 per_participant_list[user].extend(sampled_list)
                 cifar_classes[n] = cifar_classes[n][min(len(cifar_classes[n]), no_imgs):]
-
-#         data_len = int(len(self.train_dataset) / self.params['number_of_total_participants'])
-#         for user in range(no_participants):
-#             for n in range(no_classes):
-#                 class_size = len(cifar_classes[n])
-#                 sampled_probabilities = class_size * np.random.dirichlet(np.array(no_participants * [alpha]))
-#                 no_imgs = int(round(sampled_probabilities[user]))
-
-        return per_participant_list, datasize
+        train_img_size = np.zeros(no_participants)
+        for i in range(no_participants):
+            train_img_size[i] = sum([datasize[i,j] for j in range(10)])
+        clas_weight = np.zeros((no_participants,10))
+        for i in range(no_participants):
+            for j in range(10):
+                clas_weight[i,j] = float(datasize[i,j])/float(train_img_size[i])
+        return per_participant_list, clas_weight
 

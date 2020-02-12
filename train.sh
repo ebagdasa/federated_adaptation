@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH -J text_med_ft
-#SBATCH -o text_med_ft.o%j
-#SBATCH -e text_med_ft.o%j
+#SBATCH -J adapt_med
+#SBATCH -o adapt_med.o%j
+#SBATCH -e adapt_med.o%j
 #SBATCH -N 1
 #SBATCH -n 2
 #SBATCH --mem=10000
@@ -25,5 +25,5 @@
 # CUDA_VISIBLE_DEVICES=1 nohup python -u training1.py --name image >log_av_sc0.01.txt 2>&1 &
 # CUDA_VISIBLE_DEVICES=1 nohup python /home/ty367/federated/training1.py --name text --params /home/ty367/federated/utils/words1.yaml >text_av_fbr.txt 2>&1 &
 # CUDA_VISIBLE_DEVICES=0 python /home/ty367/federated/training1.py --name text --params /home/ty367/federated/utils/words1.yaml
-# python training1.py --name image
-python -u /home/ty367/federated/training1.py --name text --params /home/ty367/federated/utils/words1.yaml
+# python adapt.py --name image --params /home/ty367/federated/utils/adapt_image.yaml
+python /home/ty367/federated/adapt.py --name text --params /home/ty367/federated/utils/adapt_text.yaml
