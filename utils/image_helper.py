@@ -1,17 +1,8 @@
 import torch
-from torch.autograd import Variable
-from torch.nn.functional import log_softmax
-from torchvision import transforms
 from collections import defaultdict
-
-
 from utils.helper import Helper
 import random
 import logging
-import torchvision
-# from models.word_model import RNNModel
-# from utils.nlp_dataset import NLPDataset
-# from utils.text_load import *
 from models.resnet import ResNet18
 from torchvision import datasets, transforms
 import numpy as np
@@ -33,12 +24,12 @@ class ImageHelper(Helper):
         if self.resumed_model:
             loaded_params = torch.load(f"./saved_models/{self.params['resumed_model']}")
             target_model.load_state_dict(loaded_params['state_dict'])
-            self.start_epoch = loaded_params['epoch']
+            self.start_round = loaded_params['round']
             self.params['lr'] = loaded_params.get('lr', self.params['lr'])
             logger.info(f"Loaded parameters from saved model: LR is"
-                        f" {self.params['lr']} and current epoch is {self.start_epoch}")
+                        f" {self.params['lr']} and current round is {self.start_round}")
         else:
-            self.start_epoch = 1
+            self.start_round = 1
 
         self.local_model = local_model
         self.target_model = target_model

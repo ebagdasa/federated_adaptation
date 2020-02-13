@@ -50,7 +50,7 @@ def train(helper, train_data_sets, local_model, target_model):
 
     for model_id in tqdm(range(helper.no_models)):
         model = local_model
-        ### copy all parameters from the target_model
+        # copy all parameters from the target_model
         model.copy_params(target_model.state_dict())
         optimizer = torch.optim.SGD(model.parameters(), lr=helper.lr,
                                     momentum=helper.momentum,
@@ -180,9 +180,9 @@ def test_local(helper, train_data_sets, target_model):
         else:
             _, (current_data_model, test_data) = train_data_sets[model_id]
         
-        local_loss, local_correct, local_total_test_wors, local_acc = eval_(helper, test_data, model)
+        local_loss, local_correct, local_total_test_words, local_acc = eval_(helper, test_data, model)
         Test_local_Acc.append(local_acc)
-    np.save('/home/ty367/federated/data/CIFAR_Test_local_Acc_first_train_averaging_diff.npy',Test_local_Acc) 
+    np.save('/home/ty367/federated/data/CIFAR_Test_local_Acc_first_train_averaging_diff.npy', Test_local_Acc)
 
 
 def test(helper, data_source,
@@ -193,8 +193,6 @@ def test(helper, data_source,
     total_test_words = 0.0
     if helper.data_type == 'text':
         hidden = model.init_hidden(helper.params['test_batch_size'])
-        random_print_output_batch = \
-        random.sample(range(0, (data_source.size(0) // helper.params['bptt']) - 1), 1)[0]
         data_iterator = range(0, data_source.size(0)-1, helper.params['bptt'])
         dataset_size = len(data_source)
     else:
@@ -222,12 +220,13 @@ def test(helper, data_source,
 
         if helper.data_type == 'text':
             acc = 100.0 * (correct / total_test_words)
+            acc = acc.item()
             total_l = total_loss.item() / (dataset_size-1)
             logger.info('___Global_Test {} poisoned: {}, Average loss: {:.4f}, '
                         'Accuracy: {}/{} ({:.4f}%) | per_perplexity {:8.2f}'
-                        .format(model.name, is_poison, total_l, correct, total_test_words, acc, math.exp(total_l) if total_l < 30 else -1.))
-            acc = acc.item()
-#             total_l = total_l.item()
+                        .format(model.name, is_poison, total_l, correct,
+                                total_test_words, acc,
+                                math.exp(total_l) if total_l < 30 else -1.))
         else:
             acc = 100.0 * (float(correct) / float(dataset_size))
             total_l = total_loss / dataset_size
@@ -302,15 +301,15 @@ if __name__ == '__main__':
         test_loss = list()
         test_acc = list()
         
-        for round in range(runner_helper.start_epoch, runner_helper.total_rounds + 1):
+        for round in range(runner_helper.start_round, runner_helper.total_rounds + 1):
             start_time = time.time()
 
             subset_data_chunks = random.sample(participant_ids[1:], runner_helper.no_models)
             logger.info(f'Selected models: {subset_data_chunks}')
             t = time.time()
-            train_data_sets = [(pos, runner_helper.train_data[pos]) for pos in subset_data_chunks]
+            train_sets = [(pos, runner_helper.train_data[pos]) for pos in subset_data_chunks]
             weight_acc = train(helper=runner_helper,
-                               train_data_sets=train_data_sets,
+                               train_data_sets=train_sets,
                                local_model=runner_helper.local_model, 
                                target_model=runner_helper.target_model)
             logger.info(f'time spent on training: {time.time() - t}')

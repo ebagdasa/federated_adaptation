@@ -68,7 +68,7 @@ class Helper:
         self.multi_gpu = self.params.get('multi_gpu', False)
         self.save_name = self.params.get('save_name', 'save_name')
         self.data_type = self.params.get('data_type', 'image')
-        self.start_epoch = 1
+        self.start_round = 1
 
         ### FEDERATED LEARNING PARAMS
         self.sampling_dirichlet = self.params.get('sampling_dirichlet', False)
@@ -113,7 +113,7 @@ class Helper:
             self.save_checkpoint(saved_dict, False, model_name)
             if round in self.save_on_rounds:
                 logger.info(f'Saving model on round {round}')
-                self.save_checkpoint(saved_dict, False, filename=f'{model_name}.epoch_{round}')
+                self.save_checkpoint(saved_dict, False, filename=f'{model_name}.round_{round}')
             if val_loss < self.best_loss:
                 self.save_checkpoint(saved_dict, False, f'{model_name}.best')
                 self.best_loss = val_loss
@@ -241,7 +241,7 @@ class Helper:
             logger.info('Resuming training...')
             loaded_params = torch.load(f"saved_models/{self.resumed_model}")
             model.load_state_dict(loaded_params['state_dict'])
-            self.start_epoch = loaded_params['epoch']
+            self.start_round = loaded_params['round']
             if lr:
                 self.lr = loaded_params.get('lr', self.lr)
 
@@ -250,7 +250,7 @@ class Helper:
             self.fixed_model.load_state_dict(loaded_params['state_dict'])
 
             logger.warning(f"Loaded parameters from saved model: LR is"
-                        f" {self.lr} and current epoch is {self.start_epoch}")
+                        f" {self.lr} and current round is {self.start_round}")
 
     def flush_writer(self):
         if self.writer:
