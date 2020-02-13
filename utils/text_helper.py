@@ -1,13 +1,7 @@
-import torch
-from torch.autograd import Variable
-from torch.nn.functional import log_softmax
-
 from utils.helper import Helper
-import random
 import logging
 
 from models.word_model import RNNModel
-# from utils.nlp_dataset import NLPDataset
 from utils.text_load import *
 
 logger = logging.getLogger("logger")
@@ -27,13 +21,10 @@ class TextHelper(Helper):
         data = data.view(bsz, -1).t().contiguous()
         return data.cuda()
 
-
     def get_sentence(self, tensor):
         result = list()
         for entry in tensor:
             result.append(self.corpus.dictionary.idx2word[entry])
-
-        # logger.info(' '.join(result))
         return ' '.join(result)
 
     @staticmethod
