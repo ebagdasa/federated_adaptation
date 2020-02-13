@@ -97,7 +97,7 @@ class TextHelper(Helper):
                                 dropout=self.params['dropout'], tie_weights=self.params['tied'])
         target_model.to(self.device)
         if self.resumed_model:
-            loaded_params = torch.load(f"/home/ty367/federated/saved_models/{self.params['resumed_model']}")
+            loaded_params = torch.load(f"{self.repo_path}/saved_models/{self.params['resumed_model']}")
             target_model.load_state_dict(loaded_params['state_dict'])
             self.start_epoch = loaded_params['epoch']
             self.params['lr'] = loaded_params.get('lr', self.params['lr'])

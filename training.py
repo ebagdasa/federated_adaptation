@@ -153,7 +153,7 @@ def eval_(helper, data_source, model):
             else:
                 output = model(data)
                 total_loss += nn.functional.cross_entropy(output, targets,
-                                                  reduction='sum').item() # sum up batch loss
+                                                          reduction='sum').item() # sum up batch loss
                 pred = output.data.max(1)[1]  # get the index of the max log-probability
                 correct += pred.eq(targets.data.view_as(pred)).cpu().sum().item()
         if helper.data_type == 'text':
@@ -182,7 +182,7 @@ def test_local(helper, train_data_sets, target_model):
         
         local_loss, local_correct, local_total_test_words, local_acc = eval_(helper, test_data, model)
         Test_local_Acc.append(local_acc)
-    np.save('/home/ty367/federated/data/CIFAR_Test_local_Acc_first_train_averaging_diff.npy', Test_local_Acc)
+    np.save('{helper.repo_path}/data/CIFAR_Test_local_Acc_first_train_averaging_diff.npy', Test_local_Acc)
 
 
 def test(helper, data_source,
@@ -279,7 +279,7 @@ if __name__ == '__main__':
 
     # setup tensorboard
     if runner_helper.tb:
-        wr = SummaryWriter(log_dir=f'/home/ty367/federated/runs/{args.name}')
+        wr = SummaryWriter(log_dir=f'{runner_helper.repo_path}/runs/{args.name}')
         runner_helper.writer = wr
         table = create_table(runner_helper.params)        
         runner_helper.writer.add_text('Model Params', table)
@@ -300,8 +300,10 @@ if __name__ == '__main__':
         dist_list = list()
         test_loss = list()
         test_acc = list()
-        
-        for round in range(runner_helper.start_round, runner_helper.total_rounds + 1):
+
+        # Perform multiple rounds of training `target_model`
+        for federated_round in range(runner_helper.start_round, runner_helper.total_rounds + 1):
+
             start_time = time.time()
 
             subset_data_chunks = random.sample(participant_ids[1:], runner_helper.no_models)
@@ -317,16 +319,16 @@ if __name__ == '__main__':
             # Aggregate the models
             if runner_helper.aggregation_type == 'averaging':
                 runner_helper.average_shrink_models(target_model=runner_helper.target_model,
-                                         weight_accumulator=weight_acc)
+                                                    weight_accumulator=weight_acc)
             elif runner_helper.aggregation_type == 'median':
                 runner_helper.median_aggregation(target_model=runner_helper.target_model,
-                                         weight_accumulator=weight_acc)
+                                                 weight_accumulator=weight_acc)
             else:
                 raise NotImplemented(f'Aggregation {runner_helper.aggregation_type} not yet implemented.')
             
-            if round in runner_helper.save_on_rounds or (round+1)%1000==0:
+            if federated_round in runner_helper.save_on_rounds or (federated_round+1) % 1000 == 0:
                 t = time.time()
-                logger.info(f'testing global model at round: {round}')
+                logger.info(f'testing global model at round: {federated_round}')
                 round_loss, round_acc = test(helper=runner_helper,
                                              data_source=runner_helper.test_data,
                                              model=runner_helper.target_model,
@@ -335,20 +337,26 @@ if __name__ == '__main__':
                 test_acc.append(round_acc)
                 logger.info(f'time spent on testing: {time.time() - t}')
                 
-                runner_helper.save_model(round=round, val_loss=round_loss)
+                runner_helper.save_model(round=federated_round, val_loss=round_loss)
                 
             logger.info(f'Done in {time.time()-start_time} sec.')
         logger.info(f"All Test_Loss during training: {test_loss}, All Test_Acc during training: {test_acc}.")
     
     logger.info(f"start test all local models")
     if runner_helper.data_type == 'text':
-        test_local(helper=runner_helper, train_data_sets=[(pos, runner_helper.train_data[pos]) for pos in
-                                                    participant_ids[1:]], target_model=runner_helper.target_model)
+        test_local(helper=runner_helper,
+                   train_data_sets=[(pos, runner_helper.train_data[pos])
+                                    for pos in participant_ids[1:]],
+                   target_model=runner_helper.target_model)
     else:
-        test_local(helper=runner_helper, train_data_sets=[(pos, runner_helper.test_local_data[pos]) for pos in
-                                                    participant_ids[1:]], target_model=runner_helper.target_model)
+        test_local(helper=runner_helper,
+                   train_data_sets=[(pos, runner_helper.test_data[pos])
+                                    for pos in participant_ids[1:]],
+                   target_model=runner_helper.target_model)
     logger.info(f"finish test all local models, start test global model")
-    final_loss, final_acc = test(helper=runner_helper, data_source=runner_helper.test_data,
-                                             model=runner_helper.target_model, is_poison=False, visualize=True)
+    final_loss, final_acc = test(helper=runner_helper,
+                                 data_source=runner_helper.test_data,
+                                 model=runner_helper.target_model,
+                                 is_poison=False, visualize=True)
     logger.info(f"Final Test_Loss of Global model: {final_loss}, Final Test_Acc of Global model: {final_acc}.")
     logger.info(f"This run has a label: {runner_helper.params['current_time']}. ")

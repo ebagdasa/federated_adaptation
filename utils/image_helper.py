@@ -93,6 +93,11 @@ class ImageHelper(Helper):
         return train_loader
 
     def get_batch(self, train_data, bptt, evaluation=False):
+        """
+        Just mimics the TextHelper call but essentially unwraps
+        batch as (data, target) tuple.
+
+        """
         data, target = bptt
         data = data.to(self.device)
         target = target.to(self.device)
@@ -100,7 +105,6 @@ class ImageHelper(Helper):
             data.requires_grad_(False)
             target.requires_grad_(False)
         return data, target
-
 
     def sample_dirichlet_data(self, dataset, no_participants, alpha=0.9):
         """
@@ -141,4 +145,3 @@ class ImageHelper(Helper):
             for j in range(10):
                 clas_weight[i,j] = float(datasize[i,j])/float(train_img_size[i])
         return per_participant_list, clas_weight
-

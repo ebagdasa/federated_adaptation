@@ -32,7 +32,8 @@ class Helper:
         self.params = params
         self.name = name
         self.best_loss = math.inf
-        self.folder_path = f'/home/ty367/federated/saved_models/model_{self.name}_{current_time}'
+        self.repo_path = self.params.get('repo_path', os.getcwd())
+        self.folder_path = f'{self.repo_path}/saved_models/model_{self.name}_{current_time}'
 
         # TRAINING PARAMS
         self.lr = self.params.get('lr', None)
