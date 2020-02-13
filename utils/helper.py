@@ -38,7 +38,8 @@ class Helper:
         self.lr = self.params.get('lr', None)
         self.decay = self.params.get('decay', None)
         self.momentum = self.params.get('momentum', None)
-        self.epochs = self.params.get('epochs', None)
+        self.total_rounds = self.params.get('total_rounds', 0)
+        self.save_on_rounds = self.params.get('save_on_rounds', [])
         self.is_save = self.params.get('save_model', False)
         self.log_interval = self.params.get('log_interval', 1000)
         self.batch_size = self.params.get('batch_size', None)
@@ -75,12 +76,17 @@ class Helper:
         self.no_models = self.params.get('no_models', None)
         self.retrain_no_times = self.params.get('retrain_no_times', 1)
         self.eta = self.params.get('eta', 1)
+
+        ## Differential privacy
         self.diff_privacy = self.params.get('diff_privacy', False)
+        self.s_norm = self.params.get('s_norm', 1)
+        self.sigma = self.params.get('sigma', 1)
 
         ### TEXT PARAMS
         self.bptt = self.params.get('bptt', False)
         self.recreate_dataset = self.params.get('recreate_dataset', False)
         self.aggregation_type = self.params.get('aggregation_type', 'averaging')
+        self.tied = self.params.get('tied', False)
 
         if self.log:
             try:
@@ -96,18 +102,18 @@ class Helper:
         self.params['current_time'] = self.current_time
         self.params['folder_path'] = self.folder_path
 
-    def save_model(self, epoch=0, val_loss=0):
+    def save_model(self, round=0, val_loss=0):
         model = self.target_model
         if self.is_save and self.log:
             # save_model
             logger.info("saving model")
             model_name = '{0}/model_last.pt.tar'.format(self.params['folder_path'])
-            saved_dict = {'state_dict': model.state_dict(), 'epoch': epoch,
+            saved_dict = {'state_dict': model.state_dict(), 'round': round,
                           'lr': self.params['lr']}
             self.save_checkpoint(saved_dict, False, model_name)
-            if epoch in self.params.get('save_on_epochs', []):
-                logger.info(f'Saving model on epoch {epoch}')
-                self.save_checkpoint(saved_dict, False, filename=f'{model_name}.epoch_{epoch}')
+            if round in self.save_on_rounds:
+                logger.info(f'Saving model on round {round}')
+                self.save_checkpoint(saved_dict, False, filename=f'{model_name}.epoch_{round}')
             if val_loss < self.best_loss:
                 self.save_checkpoint(saved_dict, False, f'{model_name}.best')
                 self.best_loss = val_loss
@@ -139,7 +145,7 @@ class Helper:
     #     orders = ([1.25, 1.5, 1.75, 2., 2.25, 2.5, 3., 3.5, 4., 4.5] +
     #               list(range(5, 64)) + [128, 256, 512])
     #
-    #     steps = int(math.ceil(self.params['epochs'] * N / self.params['batch_size']))
+    #     steps = int(math.ceil(self.params['total_rounds'] * N / self.params['batch_size']))
     #
     #     apply_dp_sgd_analysis(q, self.params['z'], steps, orders, 1e-6)
 
@@ -268,7 +274,7 @@ class Helper:
 
         return True
 
-    def average_shrink_models(self, weight_accumulator, target_model, epoch):
+    def average_shrink_models(self, weight_accumulator, target_model):
         """
         Perform FedAvg algorithm and perform some clustering on top of it.
         """
@@ -283,18 +289,17 @@ class Helper:
                                (self.eta / self.no_models)
 
             if self.diff_privacy:
-                update_per_layer.add_(self.dp_noise(data, self.params['sigma']))
+                update_per_layer.add_(self.dp_noise(data, self.sigma))
 
             data.add_(update_per_layer)
 
         return True
 
-    def median_aggregation(self, weight_accumulator, target_model, epoch):
+    def median_aggregation(self, weight_accumulator, target_model):
         """
         Coordinate-wise median
         :param weight_accumulator:
         :param target_model:
-        :param epoch:
         :return:
         """
         for name, data in target_model.state_dict().items():

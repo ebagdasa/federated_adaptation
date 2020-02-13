@@ -1,68 +1,61 @@
 import argparse
-import json
 from datetime import datetime
-import os
 import logging
 import torch
-print(torch.__version__)
-
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
-from torch.autograd import Variable
 import math
-from tqdm import tqdm
-from torchvision import transforms
 from torch.utils.tensorboard import SummaryWriter
-
 from utils.image_helper import ImageHelper
 from utils.text_helper import TextHelper
-
-from utils.utils import dict_html
-
-logger = logging.getLogger("logger")
-# logger.setLevel("ERROR")
 import yaml
 import time
-import numpy as np
-
-import random
 from utils.utils import *
 from utils.text_load import *
 
+logger = logging.getLogger("logger")
 criterion = torch.nn.CrossEntropyLoss()
 
-def train(helper, epoch, train_data_sets, local_model, target_model, last_weight_accumulator):
 
-    ### Accumulate weights for all participants.
+def train(helper, train_data_sets, local_model, target_model):
+    """
+    Performs one round of training federated `target_model`. It sequentially processes
+    `train_data_sets` and returns a sum of all the models.
+
+    :param helper: helper file with configs and useful functions
+    :param train_data_sets: a subset of participant's data
+    :param local_model: empty model that will be rewritten every time
+    :param target_model: a global model at the previous round
+    :return:
+    """
+
+    # Accumulate weights for all participants.
     weight_accumulator = dict()
 
-
     for name, data in target_model.state_dict().items():
-        #### don't scale tied weights:
-        if helper.params.get('tied', False) and name == 'decoder.weight' or '__'in name:
+        # don't scale tied and modified weights:
+        if helper.tied and name == 'decoder.weight' or '__'in name:
             continue
         if helper.aggregation_type == 'averaging':
             weight_accumulator[name] = torch.zeros_like(data)
         else:
+            # used  for median aggregation
             weight_per_model = list(data.shape)
             weight_accumulator[name] = torch.zeros([helper.no_models] + weight_per_model)
 
-    ### This is for calculating distances
+    # This is for calculating distances for Differential privacy
     target_params_variables = dict()
     for name, param in target_model.named_parameters():
         target_params_variables[name] = target_model.state_dict()[name].clone().detach().requires_grad_(False)
-    current_number_of_adversaries = 0
 
     for model_id in tqdm(range(helper.no_models)):
         model = local_model
-        ## Synchronize LR and models
+        ### copy all parameters from the target_model
         model.copy_params(target_model.state_dict())
         optimizer = torch.optim.SGD(model.parameters(), lr=helper.lr,
                                     momentum=helper.momentum,
                                     weight_decay=helper.decay)
         model.train()
-        start_time = time.time()
         if helper.data_type == 'text':
             current_data_model, train_data_all = train_data_sets[model_id]
             ntokens = len(helper.corpus.dictionary)
@@ -75,7 +68,6 @@ def train(helper, epoch, train_data_sets, local_model, target_model, last_weight
             
         for internal_epoch in range(1, helper.retrain_no_times + 1):
             model.train()
-            start_time = time.time()
             total_loss = 0.
             
             if helper.data_type == 'text':
@@ -101,11 +93,11 @@ def train(helper, epoch, train_data_sets, local_model, target_model, last_weight
                 if helper.diff_privacy:
                     optimizer.step()
                     model_norm = helper.model_dist_norm(model, target_params_variables)
-                    if model_norm > helper.params['s_norm']:
-                        norm_scale = helper.params['s_norm'] / (model_norm)
+                    if model_norm > helper.s_norm:
+                        norm_scale = helper.s_norm / (model_norm)
                         for name, layer in model.named_parameters():
                             #### don't scale tied weights:
-                            if helper.params.get('tied', False) and name == 'decoder.weight' or '__'in name:
+                            if helper.tied and name == 'decoder.weight' or '__'in name:
                                 continue
                             clipped_difference = norm_scale * (
                             layer.data - target_model.state_dict()[name])
@@ -119,10 +111,12 @@ def train(helper, epoch, train_data_sets, local_model, target_model, last_weight
                 else:
                     optimizer.step()
 
-                total_loss += loss.item()            
+                total_loss += loss.item()
+
+
+        ### sum up the model updates
         for name, data in model.state_dict().items():
-            #### don't scale tied weights:
-            if helper.params.get('tied', False) and name == 'decoder.weight' or '__'in name:
+            if helper.tied and name == 'decoder.weight' or '__'in name:
                 continue
             if helper.aggregation_type == 'averaging':
                 weight_accumulator[name].add_(data - target_model.state_dict()[name])
@@ -131,7 +125,8 @@ def train(helper, epoch, train_data_sets, local_model, target_model, last_weight
 
     return weight_accumulator
 
-def eval_(helper, data_source, model, is_poison=False):
+
+def eval_(helper, data_source, model):
     model.eval()
     total_loss = 0.0
     correct = 0.0
@@ -169,6 +164,7 @@ def eval_(helper, data_source, model, is_poison=False):
             total_l = total_loss / dataset_size
     return total_l, correct, total_test_words, acc
 
+
 def test_local(helper, train_data_sets, target_model):
     Test_local_Acc = list()
     for model_id in range(len(train_data_sets)):
@@ -187,7 +183,8 @@ def test_local(helper, train_data_sets, target_model):
         local_loss, local_correct, local_total_test_wors, local_acc = eval_(helper, test_data, model)
         Test_local_Acc.append(local_acc)
     np.save('/home/ty367/federated/data/CIFAR_Test_local_Acc_first_train_averaging_diff.npy',Test_local_Acc) 
-        
+
+
 def test(helper, data_source,
          model, is_poison=False, visualize=True):
     model.eval()
@@ -238,7 +235,7 @@ def test(helper, data_source,
             logger.info(f'___Test {model.name} , Average loss: {total_l},  '
                         f'Accuracy: {correct}/{dataset_size} ({acc}%)')
 
-    return (total_l, acc)
+    return total_l, acc
 
 
 if __name__ == '__main__':
@@ -254,103 +251,105 @@ if __name__ == '__main__':
 
     current_time = datetime.now().strftime('%b.%d_%H.%M.%S')
     if params_loaded['data_type'] == "image":
-        helper = ImageHelper(current_time=current_time, params=params_loaded,
-                             name=params_loaded.get('name', 'image'))
+        runner_helper = ImageHelper(current_time=current_time, params=params_loaded,
+                                    name=params_loaded.get('name', 'image'))
     else:
-        helper = TextHelper(current_time=current_time, params=params_loaded,
-                            name=params_loaded.get('name', 'text'))
+        runner_helper = TextHelper(current_time=current_time, params=params_loaded,
+                                   name=params_loaded.get('name', 'text'))
 
-    helper.load_data()
-    helper.create_model()
+    runner_helper.load_data()
+    runner_helper.create_model()
 
     best_loss = float('inf')
 
     # configure logging
-    if helper.log:
+    if runner_helper.log:
         logger = create_logger()
-        fh = logging.FileHandler(filename=f'{helper.folder_path}/log.txt')
+        fh = logging.FileHandler(filename=f'{runner_helper.folder_path}/log.txt')
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         fh.setFormatter(formatter)
         logger.addHandler(fh)
 
-        logger.warning(f'Logging things. current path: {helper.folder_path}')
+        logger.warning(f'Logging things. current path: {runner_helper.folder_path}')
 
-        helper.params['tb_name'] = args.name
-        with open(f'{helper.folder_path}/params.yaml.txt', 'w') as f:
-            yaml.dump(helper.params, f)
+        runner_helper.params['tb_name'] = args.name
+        with open(f'{runner_helper.folder_path}/params.yaml.txt', 'w') as f:
+            yaml.dump(runner_helper.params, f)
     else:
         logger = create_logger()
 
-    if helper.tb:
+    # setup tensorboard
+    if runner_helper.tb:
         wr = SummaryWriter(log_dir=f'/home/ty367/federated/runs/{args.name}')
-        helper.writer = wr
-        table = create_table(helper.params)        
-        helper.writer.add_text('Model Params', table)
+        runner_helper.writer = wr
+        table = create_table(runner_helper.params)        
+        runner_helper.writer.add_text('Model Params', table)
         print(table)
 
-    if not helper.random:
-        helper.fix_random()
+    # fix random seed
+    if not runner_helper.random:
+        runner_helper.fix_random()
 
-
-    participant_ids = range(len(helper.train_data))
+    participant_ids = range(len(runner_helper.train_data))
     mean_acc = list()
 
-    weight_accumulator = None
-    # save parameters:
-    with open(f'{helper.folder_path}/params.yaml', 'w') as f:
-        yaml.dump(helper.params, f)
+    # save parameters
+    with open(f'{runner_helper.folder_path}/params.yaml', 'w') as f:
+        yaml.dump(runner_helper.params, f)
 
-    if not helper.only_eval:
+    if not runner_helper.only_eval:
         dist_list = list()
-        Test_Loss = list()
-        Test_Acc = list()
-        for epoch in range(helper.start_epoch, helper.params['epochs'] + 1):
+        test_loss = list()
+        test_acc = list()
+        
+        for round in range(runner_helper.start_epoch, runner_helper.total_rounds + 1):
             start_time = time.time()
 
-            subset_data_chunks = random.sample(participant_ids[1:], helper.no_models)
+            subset_data_chunks = random.sample(participant_ids[1:], runner_helper.no_models)
             logger.info(f'Selected models: {subset_data_chunks}')
             t = time.time()
-            weight_accumulator = train(helper=helper, epoch=epoch,
-                                       train_data_sets=[(pos, helper.train_data[pos]) for pos in
-                                                        subset_data_chunks],
-                                       local_model=helper.local_model, target_model=helper.target_model,
-                                        last_weight_accumulator=weight_accumulator)
+            train_data_sets = [(pos, runner_helper.train_data[pos]) for pos in subset_data_chunks]
+            weight_acc = train(helper=runner_helper,
+                               train_data_sets=train_data_sets,
+                               local_model=runner_helper.local_model, 
+                               target_model=runner_helper.target_model)
             logger.info(f'time spent on training: {time.time() - t}')
-            # Average the models
-            if helper.aggregation_type == 'averaging':
-                helper.average_shrink_models(target_model=helper.target_model,
-                                         weight_accumulator=weight_accumulator, epoch=epoch)
-            elif helper.aggregation_type == 'median':
-                helper.median_aggregation(target_model=helper.target_model,
-                                         weight_accumulator=weight_accumulator, epoch=epoch)
+            
+            # Aggregate the models
+            if runner_helper.aggregation_type == 'averaging':
+                runner_helper.average_shrink_models(target_model=runner_helper.target_model,
+                                         weight_accumulator=weight_acc)
+            elif runner_helper.aggregation_type == 'median':
+                runner_helper.median_aggregation(target_model=runner_helper.target_model,
+                                         weight_accumulator=weight_acc)
             else:
-                raise NotImplemented(f'Aggregation {helper.aggregation_type} not yet implemented.')
-            # del weight_accumulator
-            if epoch in helper.params['save_on_epochs'] or (epoch+1)%1000==0:
+                raise NotImplemented(f'Aggregation {runner_helper.aggregation_type} not yet implemented.')
+            
+            if round in runner_helper.save_on_rounds or (round+1)%1000==0:
                 t = time.time()
-                logger.info(f'testing global model at epoch: {epoch}')
-                epoch_loss, epoch_acc = test(helper=helper, data_source=helper.test_data,
-                                             model=helper.target_model, is_poison=False, visualize=True)
-                Test_Loss.append(epoch_loss)
-                Test_Acc.append(epoch_acc)
+                logger.info(f'testing global model at round: {round}')
+                round_loss, round_acc = test(helper=runner_helper,
+                                             data_source=runner_helper.test_data,
+                                             model=runner_helper.target_model,
+                                             is_poison=False, visualize=True)
+                test_loss.append(round_loss)
+                test_acc.append(round_acc)
                 logger.info(f'time spent on testing: {time.time() - t}')
                 
-                helper.save_model(epoch=epoch, val_loss=epoch_loss)
+                runner_helper.save_model(round=round, val_loss=round_loss)
                 
             logger.info(f'Done in {time.time()-start_time} sec.')
-        logger.info(f"All Test_Loss during training: {Test_Loss}, All Test_Acc during training: {Test_Acc}.")
+        logger.info(f"All Test_Loss during training: {test_loss}, All Test_Acc during training: {test_acc}.")
     
     logger.info(f"start test all local models")
-    if helper.data_type == 'text':
-        test_local(helper=helper, train_data_sets=[(pos, helper.train_data[pos]) for pos in
-                                                    participant_ids[1:]], target_model=helper.target_model)
+    if runner_helper.data_type == 'text':
+        test_local(helper=runner_helper, train_data_sets=[(pos, runner_helper.train_data[pos]) for pos in
+                                                    participant_ids[1:]], target_model=runner_helper.target_model)
     else:
-        test_local(helper=helper, train_data_sets=[(pos, helper.test_local_data[pos]) for pos in
-                                                    participant_ids[1:]], target_model=helper.target_model)
+        test_local(helper=runner_helper, train_data_sets=[(pos, runner_helper.test_local_data[pos]) for pos in
+                                                    participant_ids[1:]], target_model=runner_helper.target_model)
     logger.info(f"finish test all local models, start test global model")
-    final_loss, final_acc = test(helper=helper, data_source=helper.test_data,
-                                             model=helper.target_model, is_poison=False, visualize=True)
+    final_loss, final_acc = test(helper=runner_helper, data_source=runner_helper.test_data,
+                                             model=runner_helper.target_model, is_poison=False, visualize=True)
     logger.info(f"Final Test_Loss of Global model: {final_loss}, Final Test_Acc of Global model: {final_acc}.")
-    logger.info(f"This run has a label: {helper.params['current_time']}. ")
-    
-#     logger.info(f"Visdom environment: {helper.params['environment_name']}")
+    logger.info(f"This run has a label: {runner_helper.params['current_time']}. ")

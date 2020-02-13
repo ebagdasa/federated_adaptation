@@ -89,13 +89,13 @@ class TextHelper(Helper):
                                ninp=self.params['emsize'], nhid=self.params['nhid'],
                                nlayers=self.params['nlayers'],
                                dropout=self.params['dropout'], tie_weights=self.params['tied'])
-        local_model.cuda()
+        local_model.to(self.device)
         target_model = RNNModel(name='Target', created_time=self.params['current_time'],
                                 rnn_type='LSTM', ntoken=self.n_tokens,
                                 ninp=self.params['emsize'], nhid=self.params['nhid'],
                                 nlayers=self.params['nlayers'],
                                 dropout=self.params['dropout'], tie_weights=self.params['tied'])
-        target_model.cuda()
+        target_model.to(self.device)
         if self.resumed_model:
             loaded_params = torch.load(f"/home/ty367/federated/saved_models/{self.params['resumed_model']}")
             target_model.load_state_dict(loaded_params['state_dict'])
