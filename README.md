@@ -23,7 +23,7 @@ We use two datasets in the paper:
 ### Usage
 1. For the federated learning model, configure the parameters using `utils/params.yaml`, to train a federated learning model on the Reddit Corpus, run:
 ```
-$ python training.py --name text --params utils/params.yaml
+$ python training.py --name text --params utils/words.yaml
 ```
 
 2. For the adaptation of the federated learning model, configure the parameters using `utils/adapt_text.yaml` or `utils/adapt_image.yaml`, to adapt a federated learning model on the Reddit Corpus, run:
@@ -31,7 +31,7 @@ $ python training.py --name text --params utils/params.yaml
 $ python adapt.py --name text --params utils/adapt_text.yaml
 ```
 
-Similarly, change `text` into `image` to train and adapt the federated learning model on CIFAR.
+Similarly, change `text` and `words.yaml` into `image` and `params.yaml` to train and adapt the federated learning model on CIFAR.
 
 ### Citation
 If you use our code or wish to refer to our results, please use the following BibTex entry:

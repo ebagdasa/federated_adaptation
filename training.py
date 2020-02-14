@@ -53,11 +53,11 @@ def train(helper, train_data_sets, local_model, target_model):
         for name, param in target_model.named_parameters():
             target_params_variables[name] = target_model.state_dict()[name].clone().detach().requires_grad_(False)
 
-    for model_id in tqdm(range(helper.no_models)):
+    for model_id in range(helper.no_models):
         model = local_model
         # copy all parameters from the target_model
         model.copy_params(target_model.state_dict())
-        if helper.multi.gpu:
+        if helper.multi_gpu:
             model = torch.nn.DataParallel(model, dim=1).cuda()
         optimizer = torch.optim.SGD(model.parameters(), lr=helper.lr,
                                     momentum=helper.momentum,
@@ -66,7 +66,7 @@ def train(helper, train_data_sets, local_model, target_model):
         if helper.data_type == 'text':
             current_data_model, train_data_all = train_data_sets[model_id]
             ntokens = len(helper.corpus.dictionary)
-            if helper.multi.gpu:
+            if helper.multi_gpu:
                 hidden = model.module.init_hidden(helper.batch_size)
             else:
                 hidden = model.init_hidden(helper.batch_size)
@@ -136,7 +136,7 @@ def train(helper, train_data_sets, local_model, target_model):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PPDL')
-    parser.add_argument('--params', dest='params', default=f'{runner_helper.repo_path}/utils/params.yaml')
+    parser.add_argument('--params', dest='params', default='./utils/params.yaml')
     parser.add_argument('--name', dest='name', required=True)
 
     args = parser.parse_args()
@@ -199,8 +199,8 @@ if __name__ == '__main__':
         test_acc = list()
 
         # Perform multiple rounds of training `target_model`
-        for federated_round in range(runner_helper.start_round, runner_helper.total_rounds + 1):
-
+        for federated_round in tqdm(range(runner_helper.start_round, runner_helper.total_rounds + 1)):
+            logger.info(f'training in round: {federated_round}')
             start_time = time.time()
 
             subset_data_chunks = random.sample(participant_ids[1:], runner_helper.no_models)

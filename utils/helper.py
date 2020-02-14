@@ -34,7 +34,8 @@ class Helper:
         self.best_loss = math.inf
         self.repo_path = self.params.get('repo_path', os.getcwd())
         self.folder_path = f'{self.repo_path}/saved_models/model_{self.name}_{current_time}'
-        self.save_name = f'{self.repo_path}/stats/{self.save_name}'
+        savename = self.params.get('save_name','debug')
+        self.save_name = f'{self.repo_path}/stats/{savename}'
 
         # TRAINING PARAMS
         self.lr = self.params.get('lr', None)
@@ -74,6 +75,7 @@ class Helper:
         self.number_of_total_participants = self.params.get('number_of_total_participants', None)
         self.no_models = self.params.get('no_models', None)
         self.retrain_no_times = self.params.get('retrain_no_times', 1)
+        self.adaptation_epoch = self.params.get('adaptation_epoch', 100)
         self.eta = self.params.get('eta', 1)
 
         ## Differential privacy

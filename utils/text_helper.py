@@ -47,16 +47,15 @@ class TextHelper(Helper):
 
         logger.info('Loading data')
         #### check the consistency of # of batches and size of dataset for poisoning
-
-        dictionary = torch.load(self.params['word_dictionary_path'])
-        corpus_file_name = f"{self.params['data_folder']}/" \
+        word_dictionary_path = f"{self.params['repo_path']}/" \
+            f"{self.params['word_dictionary_path']}"
+        dictionary = torch.load(word_dictionary_path)
+        corpus_file_name = f"{self.params['repo_path']}/data/" \
             f"corpus_{self.params['number_of_total_participants']}.pt.tar"
-        corpus_file_name_diff_words = f"{self.params['data_folder']}/" \
+        corpus_file_name_diff_words = f"{self.params['repo_path']}/data/" \
             f"corpus_{self.params['number_of_total_participants']}_diff_words.pt.tar"
-        corpus_file_name_voc_size = f"{self.params['data_folder']}/" \
+        corpus_file_name_voc_size = f"{self.params['repo_path']}/data/" \
             f"corpus_{self.params['number_of_total_participants']}_voc_size.pt.tar"
-#         corpus_file_name1 = f"{self.params['data_folder1']}/" \
-#             f"corpus_{self.params['number_of_total_participants']}.pt.tar"
         if self.recreate_dataset:
             self.corpus = Corpus(self.params, dictionary=dictionary)
             torch.save(self.corpus, corpus_file_name)

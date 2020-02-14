@@ -13,6 +13,7 @@ import logging
 import colorlog
 import os
 
+
 class AverageMeter(object):
     """Computes and stores the average and current value"""
     def __init__(self):
@@ -403,9 +404,9 @@ def criterion_kd(helper, outputs, targets, teacher_outputs):
     """
     alpha = helper.alpha
     T = helper.temperature
-    KD_loss = nn.KLDivLoss()(F.log_softmax(outputs/T, dim=1),
-                             F.softmax(teacher_outputs/T, dim=1)) * (alpha * T * T) + \
-              F.cross_entropy(outputs, targets) * (1. - alpha)
+    KD_loss = torch.nn.KLDivLoss()(torch.nn.functional.log_softmax(outputs/T, dim=1),
+                             torch.nn.functional.softmax(teacher_outputs/T, dim=1)) * (alpha * T * T) + \
+              torch.nn.functional.cross_entropy(outputs, targets) * (1. - alpha)
     return KD_loss
 
 
@@ -435,14 +436,14 @@ def test(helper, data_source, model):
             if helper.data_type == 'text':
                 output, hidden = model(data, hidden)
                 output_flat = output.view(-1, helper.n_tokens)
-                total_loss += len(data) * criterion(output_flat, targets).data
+                total_loss += len(data) * torch.nn.functional.cross_entropy(output_flat, targets).data
                 hidden = tuple([each.data for each in hidden])
                 pred = output_flat.data.max(1)[1]
                 correct += pred.eq(targets.data).sum().to(dtype=torch.float)
                 total_test_words += targets.data.shape[0]
             else:
                 output = model(data)
-                total_loss += nn.functional.cross_entropy(output, targets,
+                total_loss += torch.nn.functional.cross_entropy(output, targets,
                                                   reduction='sum').item() # sum up batch loss
                 pred = output.data.max(1)[1]  # get the index of the max log-probability
                 correct += pred.eq(targets.data.view_as(pred)).cpu().sum().item()
@@ -461,7 +462,7 @@ def test(helper, data_source, model):
                         'Accuracy: {}/{} ({:.4f}%) | per_perplexity {:8.2f}'
                         .format(modelname, total_l, correct, total_test_words, acc, math.exp(total_l) if total_l < 30 else -1.))
             acc = acc.item()
-            return total_l, acc, math.exp(total_l)
+            return total_l, acc, total_l
         else:
             acc = 100.0 * (float(correct) / float(dataset_size))
             for i in range(10):

@@ -1,41 +1,32 @@
 data_type: image
-repo_path: ./
+repo_path: /federated
+
+recreate_dataset: false
 
 batch_size: 32
 test_batch_size: 100
-lr: 0.001
-### 0.1, 0.01, 0.001
+lr: 0.1
 momentum: 0.9
 decay: 0.0005
 total_rounds: 999
 save_on_epochs: []
 optimizer: SGD
-
 multi_gpu: false
 
-save_model: false
-recreate_dataset: false
+save_model: true
 
-resumed_model: model_image_Nov.09_01.55.54/model_last.pt.tar.best
-###averaging: model_image_Nov.09_01.58.58/model_last.pt.tar.best
-###averaging_diff: model_image_Nov.09_01.59.42/model_last.pt.tar.best
-###median: model_image_Nov.09_01.55.54/model_last.pt.tar.best
-
-diff_privacy: false
-s_norm: 15
-sigma: 0.01
-
-# import for Federated Learning
+# parameters for Federated Learning
 aggregation_type: averaging
-### averaging, median
+### averaging or median
 number_of_total_participants: 100
 no_models: 10
 retrain_no_times: 2
 eta: 1
 
+diff_privacy: false
+s_norm: 15
+sigma: 0.01
+
 log: True
 tb: True
-
-report_train_loss: True
-
 random: False

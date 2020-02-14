@@ -1,5 +1,10 @@
 data_type: text
-repo_path: ./
+repo_path: /federated
+word_dictionary_path: utils/word_dictionary.pt
+
+# prepare data
+recreate_dataset: false
+scale_weights: 100
 
 # Training params
 test_batch_size: 10
@@ -7,7 +12,13 @@ lr: 40
 momentum: 0
 decay: 0
 batch_size: 20
-only_eval: false
+save_model: true
+save_on_rounds: [10, 100, 250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000, 3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000]
+
+local_test_perc: 10
+### it will cost some minutes to evaluate the model on all global testset, we offer an alternative option `partial_test' to only 
+### evaluate on a random partial_test% subset of the whole global testset, which can speed up the test.
+# partial_test: 5
 
 # FedLearning params, 80000
 aggregation_type: averaging
@@ -16,15 +27,6 @@ total_rounds: 5000
 retrain_no_times: 2
 number_of_total_participants: 80000
 eta: 1
-
-save_model: true
-save_on_rounds: [10, 100, 250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000, 3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000]
-word_dictionary_path: /home/ty367/federated/utils/50k_word_dictionary.pt
-local_test_perc: 10
-
-# prepare data
-recreate_dataset: false
-scale_weights: 100
 
 diff_privacy: false
 s_norm: 15
@@ -39,4 +41,3 @@ tied: true
 bptt: 64
 clip: 0.25
 seed: 1
-data_folder: /home/ty367/federated/data/

@@ -1,48 +1,49 @@
 data_type: text
-repo_path: ./
-save_name: text_av_fbr
+repo_path: /federated
+word_dictionary_path: utils/word_dictionary.pt
+save_name: text_debug
 
-# Training params
+# prepare the federated learning model to be adapted
+# resumed_model: model_text_Sep.29_15.54.52/model_last.pt.tar.best
+### averaging: model_text_Sep.29_15.54.52/model_last.pt.tar.best
+### averaging diff: model_text_Oct.15_15.55.39/model_last.pt.tar.best
+### median: model_text_Nov.13_02.48.35/model_last.pt.tar.best
+
+# prepare data
+recreate_dataset: false
+scale_weights: 100
+
+# adaptation params
+multi_gpu: false
 test_batch_size: 10
 lr: 1
 momentum: 0
 decay: 0
 batch_size: 20
-only_eval: false
-scratch: false
-partial_test: 10
-multi_gpu: false
-
-freeze_base: false
-
-ewc: false
-lamb: 5000
-
-kd: false
 alpha: 0.95
 temperature: 6
+lamb: 5000
 
-# FedLearning params, 80000
-no_models: 79999
-total_rounds: 5000
-retrain_no_times: 100
-number_of_total_participants: 80000
-eta: 1
+only_eval: false
+### only_eval is an option to only evaluate the resumed model locally at each participant's local testset
+scratch: false
+### scratch is an option to train local models from scratch for each participant
+freeze_base: false
+ewc: false
+kd: false
+resumed_fisher: data/text_averaing_fisher.pt
+### averaging: text_averaging_fisher
+### averaging diff: text_averaging_diff_fisher
+### median: text_median_fisher
 
-word_dictionary_path: /home/ty367/federated/utils/50k_word_dictionary.pt
 local_test_perc: 10
+### it will cost some minutes to evaluate the model on all global testset, we offer an alternative option `partial_test' to only 
+### evaluate on a random partial_test% subset of the whole global testset, which can speed up the test.
+# partial_test: 5
 
-recreate_dataset: false
-resumed_model: model_text_Sep.29_15.54.52/model_last.pt.tar.best
-### averaging: model_text_Sep.29_15.54.52/model_last.pt.tar.best
-### averaging diff: model_text_Oct.15_15.55.39/model_last.pt.tar.best
-### median: model_text_Nov.13_02.48.35/model_last.pt.tar.best
-resumed_fisher: /home/ty367/federated/data/averaing_fisher.pt
-### averaging: averaing_fisher.pt
-### averaging diff: averaing_diff_fisher.pt
-### median: median_fisher.pt
-
-scale_weights: 100
+# FedLearning params
+adaptation_epoch: 100
+number_of_total_participants: 80000
 
 # configs for the NLP model
 emsize: 200
@@ -53,4 +54,3 @@ tied: true
 bptt: 64
 clip: 0.25
 seed: 1
-data_folder: /home/ty367/federated/data

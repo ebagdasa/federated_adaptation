@@ -134,7 +134,7 @@ def adapt_local(helper, train_data_sets, fisher, target_model, local_model, adap
             image_trainset_weight = image_trainset_weight/image_trainset_weight.sum()
         
         start_time = time.time()
-        for internal_epoch in range(1, helper.retrain_no_times + 1):
+        for internal_epoch in range(1, helper.adaptation_epoch + 1):
             model.train()            
             if helper.data_type == 'text':
                 data_iterator = range(0, train_data.size(0) - 1, helper.bptt)
@@ -195,7 +195,7 @@ def adapt_local(helper, train_data_sets, fisher, target_model, local_model, adap
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PPDL')
-    parser.add_argument('--params', dest='params', default=f'{adaptation_helper.repo_path}/utils/params.yaml')
+    parser.add_argument('--params', dest='params', default='./utils/params.yaml')
     parser.add_argument('--name', dest='name', required=True)
 
     args = parser.parse_args()
@@ -232,7 +232,7 @@ if __name__ == '__main__':
     if adaptation_helper.tb:
         wr = SummaryWriter(log_dir=f'{adaptation_helper.repo_path}/runs/{args.name}')
         adaptation_helper.writer = wr
-        table = create_table(helper.params)
+        table = create_table(adaptation_helper.params)
         adaptation_helper.writer.add_text('Model Params', table)
         print(adaptation_helper.lr, table)
 
@@ -247,11 +247,13 @@ if __name__ == '__main__':
         yaml.dump(adaptation_helper.params, f)
     if not adaptation_helper.only_eval:
         if adaptation_helper.ewc:
-            if not os.path.exists(adaptation_helper.resumed_fisher):
+            fisher_path = f"{adaptation_helper.repo_path}/" \
+                f"{adaptation_helper.resumed_fisher}"
+            if not os.path.exists(fisher_path):
                 fisher = fisher_matrix_diag(adaptation_helper, adaptation_helper.test_data, adaptation_helper.target_model, criterion)
-                torch.save(fisher, adaptation_helper.resumed_fisher)
+                torch.save(fisher, fisher_path)
             else:
-                fisher = torch.load(adaptation_helper.resumed_fisher)
+                fisher = torch.load(fisher_path)
         else:
             fisher = None
         random.seed(66)
