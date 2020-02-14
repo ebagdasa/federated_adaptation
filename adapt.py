@@ -18,8 +18,6 @@ from torch.utils.tensorboard import SummaryWriter
 from utils.image_helper import ImageHelper
 from utils.text_helper import TextHelper
 
-from utils.utils import dict_html
-
 logger = logging.getLogger("logger")
 import yaml
 import time

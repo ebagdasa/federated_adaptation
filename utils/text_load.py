@@ -44,30 +44,6 @@ class Corpus(object):
         self.no_tokens = len(self.dictionary)
         self.authors_no = authors_no
         self.train, self.test, self.diff_words, self.voc_size = self.tokenize_train(f'{self.path}/shard_by_author')
-#         self.test = self.tokenize(os.path.join(self.path, 'test_data.json'))
-
-    def load_poison_data(self, number_of_words):
-        current_word_count = 0
-        path = f'{self.path}/shard_by_author'
-        list_of_authors = iter(os.listdir(path))
-        word_list = list()
-        line_number = 0
-        posts_count = 0
-        while current_word_count<number_of_words:
-            posts_count += 1
-            file_name = next(list_of_authors)
-            with open(f'{path}/{file_name}', 'r') as f:
-                for line in f:
-                    words = get_word_list(line, self.dictionary)
-                    if len(words) > 2:
-                        word_list.extend([self.dictionary.word2idx[word] for word in words])
-                        current_word_count += len(words)
-                        line_number += 1
-
-        ids = torch.LongTensor(word_list[:number_of_words])
-
-        return ids
-
 
     def tokenize_train(self, path):
         """
@@ -103,22 +79,3 @@ class Corpus(object):
                 per_participant_different_words.append(diff_word)
                 per_participant_voc_size.append(tokens)
         return per_participant_ids, per_participant_ids_test, per_participant_different_words, per_participant_voc_size
-    
-
-
-    def tokenize(self, path):
-        """Tokenizes a text file."""
-        assert os.path.exists(path)
-        # Add words to the dictionary
-        word_list = list()
-        with open(path, 'r') as f:
-            tokens = 0
-
-            for line in f:
-                words = get_word_list(line, self.dictionary)
-                tokens += len(words)
-                word_list.extend([self.dictionary.word2idx[x] for x in words])
-
-        ids = torch.LongTensor(word_list)
-
-        return ids
