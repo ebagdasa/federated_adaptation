@@ -1,5 +1,6 @@
 data_type: text
-save_name: /home/ty367/federated/log/text_av_fbr
+repo_path: ./
+save_name: text_av_fbr
 
 # Training params
 test_batch_size: 10
@@ -23,23 +24,13 @@ temperature: 6
 
 # FedLearning params, 80000
 no_models: 79999
-epochs: 5000
+total_rounds: 5000
 retrain_no_times: 100
 number_of_total_participants: 80000
 eta: 1
 
-
-save_model: false
-save_on_epochs: [10, 100, 250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000, 3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000]
 word_dictionary_path: /home/ty367/federated/utils/50k_word_dictionary.pt
-
-report_train_loss: false
-report_test_loss: true
-track_distance: false
-output_examples: false
-log_interval: 10
 local_test_perc: 10
-
 
 recreate_dataset: false
 resumed_model: model_text_Sep.29_15.54.52/model_last.pt.tar.best
@@ -52,10 +43,6 @@ resumed_fisher: /home/ty367/federated/data/averaing_fisher.pt
 ### median: median_fisher.pt
 
 scale_weights: 100
-
-diff_privacy: false
-s_norm: 15
-sigma: 0.01
 
 # configs for the NLP model
 emsize: 200

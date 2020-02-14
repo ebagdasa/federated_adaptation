@@ -22,7 +22,7 @@ class ImageHelper(Helper):
                                 created_time=self.params['current_time'])
         target_model.to(self.device)
         if self.resumed_model:
-            loaded_params = torch.load(f"./saved_models/{self.params['resumed_model']}")
+            loaded_params = torch.load(f"{self.params['repo_path']}/saved_models/{self.params['resumed_model']}")
             target_model.load_state_dict(loaded_params['state_dict'])
             self.start_round = loaded_params['round']
             self.params['lr'] = loaded_params.get('lr', self.params['lr'])
@@ -50,10 +50,10 @@ class ImageHelper(Helper):
             transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
         ])
 
-        self.train_dataset = datasets.CIFAR10('./data', train=True, download=True,
+        self.train_dataset = datasets.CIFAR10('{self.params['repo_path']}/data', train=True, download=True,
                                               transform=transform_train)
 
-        self.test_dataset = datasets.CIFAR10('./data', train=False, transform=transform_test)
+        self.test_dataset = datasets.CIFAR10('{self.params['repo_path']}/data', train=False, transform=transform_test)
         if self.recreate_dataset:
             ## sample indices for participants using Dirichlet distribution
             indices_per_participant, train_image_weight = self.sample_dirichlet_data(self.train_dataset,
@@ -62,13 +62,13 @@ class ImageHelper(Helper):
             self.train_data = [(user, self.get_train(indices_per_participant[user])) for user in range(self.params['number_of_total_participants'])]
             self.train_image_weight = train_image_weight
             self.test_data = self.get_test()
-            torch.save(self.train_data, './data/CIFAR_train_data.pt.tar')
-            torch.save(self.train_image_weight, './data/CIFAR_train_image_weight.pt')
-            torch.save(self.test_data, './data/CIFAR_test_data.pt.tar')
+            torch.save(self.train_data, '{self.params['repo_path']}/data/CIFAR_train_data.pt.tar')
+            torch.save(self.train_image_weight, '{self.params['repo_path']}/data/CIFAR_train_image_weight.pt')
+            torch.save(self.test_data, '{self.params['repo_path']}/data/CIFAR_test_data.pt.tar')
         else:
-            self.train_data = torch.load('./data/CIFAR_train_data.pt.tar')
-            self.train_image_weight = torch.load('./data/CIFAR_train_image_weight.pt')
-            self.test_data = torch.load('./data/CIFAR_test_data.pt.tar')
+            self.train_data = torch.load('{self.params['repo_path']}/data/CIFAR_train_data.pt.tar')
+            self.train_image_weight = torch.load('{self.params['repo_path']}/data/CIFAR_train_image_weight.pt')
+            self.test_data = torch.load('{self.params['repo_path']}/data/CIFAR_test_data.pt.tar')
 
     def get_test(self):
 

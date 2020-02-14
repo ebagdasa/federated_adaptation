@@ -84,73 +84,9 @@ def test_globalmodel_local(helper, data_sets, target_model):
         local_acc = eval_one_participant(helper, test_data, model)
         globalmodel_local_acc.append(local_acc)
     return globalmodel_local_acc
-
-def test(helper, data_source, model):
-    model.eval()
-    total_loss = 0.0
-    correct = 0.0
-    correct_class = np.zeros(10)
-    correct_class_acc = np.zeros(10)
-    correct_class_size = np.zeros(10)
-    total_test_words = 0.0
-    if helper.data_type == 'text':
-        if helper.multi_gpu:
-            hidden = model.module.init_hidden(helper.params['test_batch_size'])
-        else:
-            hidden = model.init_hidden(helper.params['test_batch_size'])
-        data_iterator = range(0, data_source.size(0)-1, helper.params['bptt'])
-        if helper.partial_test:
-            data_iterator = random.sample(data_iterator, len(data_iterator)//helper.partial_test)
-        dataset_size = len(data_source)
-    else:
-        dataset_size = len(data_source.dataset)
-        data_iterator = data_source
-
-    with torch.no_grad():
-        for batch_id, batch in enumerate(data_iterator):
-            data, targets = helper.get_batch(data_source, batch, evaluation=True)
-            if helper.data_type == 'text':
-                output, hidden = model(data, hidden)
-                output_flat = output.view(-1, helper.n_tokens)
-                total_loss += len(data) * criterion(output_flat, targets).data
-                hidden = tuple([each.data for each in hidden])
-#                 hidden = helper.repackage_hidden(hidden) # manually do this in last line
-                pred = output_flat.data.max(1)[1]
-                correct += pred.eq(targets.data).sum().to(dtype=torch.float)
-                total_test_words += targets.data.shape[0]
-            else:
-                output = model(data)
-                total_loss += nn.functional.cross_entropy(output, targets,
-                                                  reduction='sum').item() # sum up batch loss
-                pred = output.data.max(1)[1]  # get the index of the max log-probability
-                correct += pred.eq(targets.data.view_as(pred)).cpu().sum().item()
-                for i in range(10):
-                    class_ind = targets.data.view_as(pred).eq(i*torch.ones_like(pred))
-                    correct_class_size[i] += class_ind.cpu().sum().item()
-                    correct_class[i] += (pred.eq(targets.data.view_as(pred))*class_ind).cpu().sum().item()
-        if helper.data_type == 'text':
-            acc = 100.0 * (correct / total_test_words)
-            total_l = total_loss.item() / (dataset_size-1)
-            if helper.multi_gpu:
-                modelname = model.module.name
-            else:
-                modelname = model.name
-            logger.info('___Global_Test {}, Average loss: {:.4f}, '
-                        'Accuracy: {}/{} ({:.4f}%) | per_perplexity {:8.2f}'
-                        .format(modelname, total_l, correct, total_test_words, acc, math.exp(total_l) if total_l < 30 else -1.))
-            acc = acc.item()
-            return acc
-        else:
-            acc = 100.0 * (float(correct) / float(dataset_size))
-            for i in range(10):
-                correct_class_acc[i] = (float(correct_class[i]) / float(correct_class_size[i]))
-            total_l = total_loss / dataset_size
-            logger.info(f'___Test {model.name} , Average loss: {total_l},  '
-                        f'Accuracy: {correct}/{dataset_size} ({acc}%)')
-            return correct_class_acc
         
 
-def adapt_local(adaptedmodel_local_acc, fisher, helper, train_data_sets, local_model, target_model):    
+def adapt_local(helper, train_data_sets, fisher, target_model, local_model, adaptedmodel_local_acc):    
     for parame in target_model.parameters():
         parame.requires_grad = False
     for model_id in tqdm(range(len(train_data_sets))):
@@ -235,20 +171,7 @@ def adapt_local(adaptedmodel_local_acc, fisher, helper, train_data_sets, local_m
                         loss = criterion(output, targets)
                 loss.backward()
 
-                if helper.diff_privacy:
-                    optimizer.step()
-                    model_norm = helper.model_dist_norm(model, target_params_variables)
-                    if model_norm > helper.params['s_norm']:
-                        norm_scale = helper.params['s_norm'] / (model_norm)
-                        for name, layer in model.named_parameters():
-                            #### don't scale tied weights:
-                            if helper.params.get('tied', False) and name == 'decoder.weight' or '__'in name:
-                                continue
-                            clipped_difference = norm_scale * (
-                            layer.data - target_model.state_dict()[name])
-                            layer.data.copy_(
-                                target_model.state_dict()[name] + clipped_difference)
-                elif helper.data_type == 'text':
+                if helper.data_type == 'text':
                     # `clip_grad_norm` helps prevent the exploding gradient
                     # problem in RNNs / LSTMs.
                     torch.nn.utils.clip_grad_norm_(model.parameters(), helper.params['clip'])
@@ -262,7 +185,7 @@ def adapt_local(adaptedmodel_local_acc, fisher, helper, train_data_sets, local_m
             local_acc = eval_one_participant(helper, test_data, model)
             adaptedmodel_local_acc.append(local_acc)
         else:
-            epoch_loss, correct_class_acc = test(helper=helper, data_source=helper.test_data, model=model)
+            _, _, correct_class_acc = test(helper=helper, data_source=helper.test_data, model=model)
             adaptedmodel_local_acc.append((correct_class_acc*image_trainset_weight).sum())
         logger.info(f'time spent on testing: {time.time() - t}')
         if (model_id+1)%100==0 or (model_id+1)==len(train_data_sets):
@@ -272,7 +195,7 @@ def adapt_local(adaptedmodel_local_acc, fisher, helper, train_data_sets, local_m
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PPDL')
-    parser.add_argument('--params', dest='params', default='utils/adapt_image.yaml')
+    parser.add_argument('--params', dest='params', default=f'{adaptation_helper.repo_path}/utils/params.yaml')
     parser.add_argument('--name', dest='name', required=True)
 
     args = parser.parse_args()
@@ -283,69 +206,69 @@ if __name__ == '__main__':
 
     current_time = datetime.now().strftime('%b.%d_%H.%M.%S')
     if params_loaded['data_type'] == "image":
-        helper = ImageHelper(current_time=current_time, params=params_loaded,
+        adaptation_helper = ImageHelper(current_time=current_time, params=params_loaded,
                              name=params_loaded.get('name', 'image_adapt'))
     else:
-        helper = TextHelper(current_time=current_time, params=params_loaded,
+        adaptation_helper = TextHelper(current_time=current_time, params=params_loaded,
                             name=params_loaded.get('name', 'text_adapt'))
 
-    helper.load_data()
-    helper.create_model()
+    adaptation_helper.load_data()
+    adaptation_helper.create_model()
 
     # configure logging
-    if helper.log:
+    if adaptation_helper.log:
         logger = create_logger()
-        fh = logging.FileHandler(filename=f'{helper.folder_path}/log.txt')
+        fh = logging.FileHandler(filename=f'{adaptation_helper.folder_path}/log.txt')
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         fh.setFormatter(formatter)
         logger.addHandler(fh)
-        logger.warning(f'Logging things. current path: {helper.folder_path}')
-        helper.params['tb_name'] = args.name
-        with open(f'{helper.folder_path}/params.yaml.txt', 'w') as f:
-            yaml.dump(helper.params, f)
+        logger.warning(f'Logging things. current path: {adaptation_helper.folder_path}')
+        adaptation_helper.params['tb_name'] = args.name
+        with open(f'{adaptation_helper.folder_path}/params.yaml.txt', 'w') as f:
+            yaml.dump(adaptation_helper.params, f)
     else:
         logger = create_logger()
 
-    if helper.tb:
-        wr = SummaryWriter(log_dir=f'./runs/{args.name}')
-        helper.writer = wr
+    if adaptation_helper.tb:
+        wr = SummaryWriter(log_dir=f'{adaptation_helper.repo_path}/runs/{args.name}')
+        adaptation_helper.writer = wr
         table = create_table(helper.params)
-        helper.writer.add_text('Model Params', table)
-        print(helper.lr, table)
+        adaptation_helper.writer.add_text('Model Params', table)
+        print(adaptation_helper.lr, table)
 
-    if not helper.random:
-        helper.fix_random()
+    if not adaptation_helper.random:
+        adaptation_helper.fix_random()
 
-    participant_ids = range(len(helper.train_data))
+    participant_ids = range(len(adaptation_helper.train_data))
     mean_acc = list()
     
     # save parameters:
-    with open(f'{helper.folder_path}/params.yaml', 'w') as f:
-        yaml.dump(helper.params, f)
-    if not helper.only_eval:
-        if helper.ewc:
-            if not os.path.exists(helper.resumed_fisher):
-                fisher = fisher_matrix_diag(helper, helper.test_data, helper.target_model, criterion)
-                torch.save(fisher, helper.resumed_fisher)
+    with open(f'{adaptation_helper.folder_path}/params.yaml', 'w') as f:
+        yaml.dump(adaptation_helper.params, f)
+    if not adaptation_helper.only_eval:
+        if adaptation_helper.ewc:
+            if not os.path.exists(adaptation_helper.resumed_fisher):
+                fisher = fisher_matrix_diag(adaptation_helper, adaptation_helper.test_data, adaptation_helper.target_model, criterion)
+                torch.save(fisher, adaptation_helper.resumed_fisher)
             else:
-                fisher = torch.load(helper.resumed_fisher)
+                fisher = torch.load(adaptation_helper.resumed_fisher)
         else:
             fisher = None
         random.seed(66)
-        if not os.path.exists(helper.save_name + '_AdaptedModel_LocalTest_Acc.npy'):
+        if not os.path.exists(adaptation_helper.save_name + '_AdaptedModel_LocalTest_Acc.npy'):
             adaptedmodel_local_acc = list()
         else:
-            adaptedmodel_local_acc = list(np.load(helper.save_name + '_AdaptedModel_LocalTest_Acc.npy'))
+            adaptedmodel_local_acc = list(np.load(adaptation_helper.save_name + '_AdaptedModel_LocalTest_Acc.npy'))
         subset_data_chunks = participant_ids[len(adaptedmodel_local_acc):]
         logger.info(f'Selected adapted models ID: {subset_data_chunks}')
         t1 = time.time()
-        adapt_local(adaptedmodel_local_acc=adaptedmodel_local_acc, fisher=fisher, helper=helper, train_data_sets=[(pos, helper.train_data[pos]) for pos in subset_data_chunks],local_model=helper.local_model, target_model=helper.target_model)
+        adapt_local(helper=adaptation_helper, train_data_sets=[(pos, adaptation_helper.train_data[pos]) for pos in subset_data_chunks], fisher=fisher, target_model=adaptation_helper.target_model, local_model=adaptation_helper.local_model, adaptedmodel_local_acc=adaptedmodel_local_acc)
         logger.info(f'time spent on local adaptation: {time.time() - t1}')
     logger.info(f"Evaluate the global (target) model on participants' local testdata to get local accuracies of federated learning model")
-    if helper.data_type == 'text':
-        globalmodel_local_acc = test_globalmodel_local(helper=helper, data_sets=[(pos, helper.train_data[pos]) for pos in participant_ids], target_model=helper.target_model)
+    if adaptation_helper.data_type == 'text':
+        globalmodel_local_acc = test_globalmodel_local(helper=adaptation_helper, data_sets=[(pos, adaptation_helper.train_data[pos]) for pos in participant_ids], target_model=adaptation_helper.target_model)
     else:       
-        globalmodel_correct_class_acc = test(helper=helper, data_source=helper.test_data, model=helper.target_model)
-        globalmodel_local_acc = (globalmodel_correct_class_acc*helper.train_image_weight).sum(-1)
-    np.save(helper.save_name + '_GlobalModl_LocalTest_Acc.npy',np.array(globalmodel_local_acc))
-    logger.info(f"This run has a label: {helper.params['current_time']}. ")
+        _, _, globalmodel_correct_class_acc = test(helper=adaptation_helper, data_source=adaptation_helper.test_data, model=adaptation_helper.target_model)
+        globalmodel_local_acc = (globalmodel_correct_class_acc*adaptation_helper.train_image_weight).sum(-1)
+    np.save(adaptation_helper.save_name + '_GlobalModl_LocalTest_Acc.npy',np.array(globalmodel_local_acc))
+    logger.info(f"This run has a label: {adaptation_helper.params['current_time']}. ")

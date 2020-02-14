@@ -407,3 +407,66 @@ def criterion_kd(helper, outputs, targets, teacher_outputs):
                              F.softmax(teacher_outputs/T, dim=1)) * (alpha * T * T) + \
               F.cross_entropy(outputs, targets) * (1. - alpha)
     return KD_loss
+
+
+def test(helper, data_source, model):
+    model.eval()
+    total_loss = 0.0
+    correct = 0.0
+    correct_class = np.zeros(10)
+    correct_class_acc = np.zeros(10)
+    correct_class_size = np.zeros(10)
+    total_test_words = 0.0
+    if helper.data_type == 'text':
+        if helper.multi_gpu:
+            hidden = model.module.init_hidden(helper.params['test_batch_size'])
+        else:
+            hidden = model.init_hidden(helper.params['test_batch_size'])
+        data_iterator = range(0, data_source.size(0)-1, helper.params['bptt'])
+        if helper.partial_test:
+            data_iterator = random.sample(data_iterator, len(data_iterator)//helper.partial_test)
+        dataset_size = len(data_source)
+    else:
+        dataset_size = len(data_source.dataset)
+        data_iterator = data_source
+    with torch.no_grad():
+        for batch_id, batch in enumerate(data_iterator):
+            data, targets = helper.get_batch(data_source, batch, evaluation=True)
+            if helper.data_type == 'text':
+                output, hidden = model(data, hidden)
+                output_flat = output.view(-1, helper.n_tokens)
+                total_loss += len(data) * criterion(output_flat, targets).data
+                hidden = tuple([each.data for each in hidden])
+                pred = output_flat.data.max(1)[1]
+                correct += pred.eq(targets.data).sum().to(dtype=torch.float)
+                total_test_words += targets.data.shape[0]
+            else:
+                output = model(data)
+                total_loss += nn.functional.cross_entropy(output, targets,
+                                                  reduction='sum').item() # sum up batch loss
+                pred = output.data.max(1)[1]  # get the index of the max log-probability
+                correct += pred.eq(targets.data.view_as(pred)).cpu().sum().item()
+                for i in range(10):
+                    class_ind = targets.data.view_as(pred).eq(i*torch.ones_like(pred))
+                    correct_class_size[i] += class_ind.cpu().sum().item()
+                    correct_class[i] += (pred.eq(targets.data.view_as(pred))*class_ind).cpu().sum().item()
+        if helper.data_type == 'text':
+            acc = 100.0 * (correct / total_test_words)
+            total_l = total_loss.item() / (dataset_size-1)
+            if helper.multi_gpu:
+                modelname = model.module.name
+            else:
+                modelname = model.name
+            print('___Global_Test {}, Average loss: {:.4f}, '
+                        'Accuracy: {}/{} ({:.4f}%) | per_perplexity {:8.2f}'
+                        .format(modelname, total_l, correct, total_test_words, acc, math.exp(total_l) if total_l < 30 else -1.))
+            acc = acc.item()
+            return total_l, acc, math.exp(total_l)
+        else:
+            acc = 100.0 * (float(correct) / float(dataset_size))
+            for i in range(10):
+                correct_class_acc[i] = (float(correct_class[i]) / float(correct_class_size[i]))
+            total_l = total_loss / dataset_size
+            print(f'___Test {model.name} , Average loss: {total_l},  '
+                        f'Accuracy: {correct}/{dataset_size} ({acc}%)')
+            return total_l, acc, correct_class_acc

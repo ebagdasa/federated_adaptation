@@ -34,6 +34,7 @@ class Helper:
         self.best_loss = math.inf
         self.repo_path = self.params.get('repo_path', os.getcwd())
         self.folder_path = f'{self.repo_path}/saved_models/model_{self.name}_{current_time}'
+        self.save_name = f'{self.repo_path}/stats/{self.save_name}'
 
         # TRAINING PARAMS
         self.lr = self.params.get('lr', None)
@@ -42,12 +43,11 @@ class Helper:
         self.total_rounds = self.params.get('total_rounds', 0)
         self.save_on_rounds = self.params.get('save_on_rounds', [])
         self.is_save = self.params.get('save_model', False)
-        self.log_interval = self.params.get('log_interval', 1000)
         self.batch_size = self.params.get('batch_size', None)
         self.test_batch_size = self.params.get('test_batch_size', None)
         self.optimizer = self.params.get('optimizer', None)
-        self.scheduler = self.params.get('scheduler', False)
         self.resumed_model = self.params.get('resumed_model', False)
+        
         self.local_test_perc = self.params.get('local_test_perc', 10)
         self.only_eval = self.params.get('only_eval', False)
         self.scratch = self.params.get('scratch', False)
@@ -62,12 +62,10 @@ class Helper:
         self.log = self.params.get('log', True)
         self.tb = self.params.get('tb', True)
         self.random = self.params.get('random', True)
-        self.report_train_loss = self.params.get('report_train_loss', True)
-        self.report_test_loss = self.params.get('report_test_loss', True)
+        
         self.freeze_base = self.params.get('freeze_base', False)
         self.partial_test = self.params.get('partial_test', False)
         self.multi_gpu = self.params.get('multi_gpu', False)
-        self.save_name = self.params.get('save_name', 'save_name')
         self.data_type = self.params.get('data_type', 'image')
         self.start_round = 1
 

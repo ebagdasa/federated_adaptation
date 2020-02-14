@@ -1,4 +1,5 @@
 data_type: text
+repo_path: ./
 
 # Training params
 test_batch_size: 10
@@ -11,20 +12,14 @@ only_eval: false
 # FedLearning params, 80000
 aggregation_type: averaging
 no_models: 100
-epochs: 5000
+total_rounds: 5000
 retrain_no_times: 2
 number_of_total_participants: 80000
 eta: 1
 
 save_model: true
-save_on_epochs: [10, 100, 250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000, 3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000]
+save_on_rounds: [10, 100, 250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000, 3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000]
 word_dictionary_path: /home/ty367/federated/utils/50k_word_dictionary.pt
-
-report_train_loss: false
-report_test_loss: false
-track_distance: false
-output_examples: false
-log_interval: 10
 local_test_perc: 10
 
 # prepare data
