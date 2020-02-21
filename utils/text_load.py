@@ -35,14 +35,15 @@ def get_word_list(line, dictionary):
 
 
 class Corpus(object):
-    def __init__(self, params, dictionary):
-        self.path = params['data_folder']
+    def __init__(self, params, dictionary):       
+        repopath = params['repo_path']
+        self.path = f'{repopath}/data'
         authors_no = params['number_of_total_participants']
         self.local_test_perc = params['local_test_perc']
-
         self.dictionary = dictionary
         self.no_tokens = len(self.dictionary)
         self.authors_no = authors_no
+        self.auxiliary = self.tokenize_aux(os.path.join(self.path, 'test_data.json'))
         self.train, self.test, self.diff_words, self.voc_size = self.tokenize_train(f'{self.path}/shard_by_author')
 
     def tokenize_train(self, path):
@@ -79,3 +80,17 @@ class Corpus(object):
                 per_participant_different_words.append(diff_word)
                 per_participant_voc_size.append(tokens)
         return per_participant_ids, per_participant_ids_test, per_participant_different_words, per_participant_voc_size
+
+    def tokenize_aux(self, path):
+        """Tokenizes a text file."""
+        assert os.path.exists(path)
+        # Add words to the dictionary
+        word_list = list()
+        with open(path, 'r') as f:
+            tokens = 0
+            for line in f:
+                words = get_word_list(line, self.dictionary)
+                tokens += len(words)
+                word_list.extend([self.dictionary.word2idx[x] for x in words])
+        ids = torch.LongTensor(word_list)
+        return ids

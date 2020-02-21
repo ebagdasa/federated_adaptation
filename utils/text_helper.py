@@ -59,8 +59,8 @@ class TextHelper(Helper):
         if self.recreate_dataset:
             self.corpus = Corpus(self.params, dictionary=dictionary)
             torch.save(self.corpus, corpus_file_name)
-            torch.save(self.corpus.diff_words, corpus_file_name_diff_words)
-            torch.save(self.corpus.voc_size, corpus_file_name_voc_size)            
+#             torch.save(self.corpus.diff_words, corpus_file_name_diff_words)
+#             torch.save(self.corpus.voc_size, corpus_file_name_voc_size)            
         else:
             self.corpus = torch.load(corpus_file_name)
         logger.info('Loading data. Completed.')
@@ -69,7 +69,7 @@ class TextHelper(Helper):
         self.train_data = [self.batchify(data_chunk, self.batch_size) for data_chunk in
                            self.corpus.train]
         self.test_data = self.batchify(torch.cat(self.corpus.test), eval_batch_size)
-
+        self.auxiliary_data = self.batchify(self.corpus.auxiliary, eval_batch_size)        
         self.n_tokens = len(self.corpus.dictionary)
 
     def create_model(self):

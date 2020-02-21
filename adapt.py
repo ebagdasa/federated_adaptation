@@ -248,7 +248,7 @@ if __name__ == '__main__':
             fisher_path = f"{adaptation_helper.repo_path}/" \
                 f"{adaptation_helper.resumed_fisher}"
             if not os.path.exists(fisher_path):
-                fisher = fisher_matrix_diag(adaptation_helper, adaptation_helper.test_data, adaptation_helper.target_model, criterion)
+                fisher = fisher_matrix_diag(adaptation_helper, adaptation_helper.auxiliary_data, adaptation_helper.target_model, criterion)                
                 torch.save(fisher, fisher_path)
             else:
                 fisher = torch.load(fisher_path)

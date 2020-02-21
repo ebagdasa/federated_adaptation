@@ -31,7 +31,7 @@ scratch: false
 freeze_base: false
 ewc: false
 kd: false
-resumed_fisher: data/text_averaing_fisher.pt
+resumed_fisher: data/text_json_fisher.pt
 ### averaging: text_averaging_fisher
 ### averaging diff: text_averaging_diff_fisher
 ### median: text_median_fisher

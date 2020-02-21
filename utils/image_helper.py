@@ -7,7 +7,7 @@ from models.resnet import ResNet18
 from torchvision import datasets, transforms
 import numpy as np
 logger = logging.getLogger("logger")
-
+import random
 
 class ImageHelper(Helper):
     classes = None
@@ -56,6 +56,7 @@ class ImageHelper(Helper):
         self.test_dataset = datasets.CIFAR10(repo_path_data, train=False, transform=transform_test)
         train_data_path = f"{self.params['repo_path']}/data/CIFAR_train_data.pt.tar"     
         train_image_weight_path = f"{self.params['repo_path']}/data/CIFAR_train_image_weight.pt"
+        auxiliary_data_path = f"{self.params['repo_path']}/data/CIFAR_auxiliary_data.pt.tar"
         test_data_path = f"{self.params['repo_path']}/data/CIFAR_test_data.pt.tar"
                         
         if self.recreate_dataset:
@@ -65,20 +66,25 @@ class ImageHelper(Helper):
                 alpha=0.9)
             self.train_data = [(user, self.get_train(indices_per_participant[user])) for user in range(self.params['number_of_total_participants'])]
             self.train_image_weight = train_image_weight
-            self.test_data = self.get_test()
+            auxiliary_index_intest = random.sample(list(range(len(self.test_dataset))), len(self.test_dataset)//10)
+            test_index_remove_auxiliary = [elem for elem in range(len(self.test_dataset)) if elem not in auxiliary_index_intest] 
+            self.auxiliary_data = self.get_test(auxiliary_index_intest)
+            self.test_data = self.get_test(test_index_remove_auxiliary)
             torch.save(self.train_data, train_data_path)
             torch.save(self.train_image_weight, train_image_weight_path)
+            torch.save(self.auxiliary_data, auxiliary_data_path)
             torch.save(self.test_data, test_data_path)
         else:
             self.train_data = torch.load(train_data_path)
             self.train_image_weight = torch.load(train_image_weight_path)
             self.test_data = torch.load(test_data_path)
 
-    def get_test(self):
+    def get_test(self, indices):
 
         test_loader = torch.utils.data.DataLoader(self.test_dataset,
                                                   batch_size=self.params['test_batch_size'],
-                                                  shuffle=True)
+                                                  sampler=torch.utils.data.sampler.SubsetRandomSampler(
+                                                       indices))
 
         return test_loader
 

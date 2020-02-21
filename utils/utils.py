@@ -11,7 +11,7 @@ import matplotlib
 matplotlib.use('AGG')
 import logging
 import colorlog
-import os
+import os, time
 
 def create_table(params: dict):
     header = f"| {' | '.join([x[:12] for x in params.keys() if x != 'folder_path'])} |"
